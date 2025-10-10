@@ -4,20 +4,17 @@ Um aplicativo React Native para gerenciamento de ordens de serviço automotivas,
 
 ## 🚗 Funcionalidades
 
-### ✅ Implementadas
-- **Interface moderna e profissional** com tema automotivo
-- **Navegação completa** entre todas as telas
-- **Gerenciamento de Ordens de Serviço**:
-  - Listagem com filtros por status
-  - Visualização de detalhes
-  - Sistema de busca por OS, cliente ou placa
-- **Gerenciamento de Clientes**
-- **Gerenciamento de Veículos**
-- **Catálogo de Serviços**
-- **Sistema de armazenamento local** com AsyncStorage
-- **Context API** para gerenciamento de estado
-- **Componentes reutilizáveis**: Botões, Inputs, Modais
-- **TypeScript** com tipagem completa
+✅ Funcionalidades
+
+Interface moderna com navegação completa
+
+Gestão de Ordens de Serviço, Clientes e Veículos
+
+Catálogo de Serviços e busca de OS
+
+Armazenamento local e estado com Context API
+
+Componentes reutilizáveis com TypeScript
 
 ### Status das Ordens de Serviço
 - 🔵 Aberta
