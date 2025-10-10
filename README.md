@@ -48,6 +48,7 @@ osfacil/
 ├── assets/                       # Imagens, ícones e splash
 
 ├── components/                   # Componentes reutilizáveis
+
 │   │   ├── Button.tsx
 
 │   │   ├── PriorityButton.tsx
