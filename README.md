@@ -38,46 +38,51 @@ As seguintes funcionalidades estão prontas para implementação:
 
 osfacil/
 ├── App.tsx                      # Componente principal
+
 ├── app.json                      # Configuração do Expo
+
 ├── package.json                  # Dependências e scripts
+
 ├── tsconfig.json                 # Configuração TypeScript
 
 ├── assets/                       # Imagens, ícones e splash
-│   ├── adaptive-icon.png
-│   ├── favicon.png
-│   ├── icon.png
-│   └── splash-icon.png
-
 
 ├── components/                   # Componentes reutilizáveis
-│   ├── common/                   # Componentes genéricos
 │   │   ├── Button.tsx
+
 │   │   ├── PriorityButton.tsx
-│   │   └── ...                   # Outros componentes
 
-
-│   └── layout/                   # Componentes de layout da tela
 │       ├── Header.tsx
+
 │       └── Footer.tsx
 
 
 ├── context/                      # Gerenciamento de estado global
+
+
 │   └── AppContext.tsx
 
 
 ├── navigation/                   # Navegação
+
 │   ├── AppNavigator.tsx
+
 │   └── types.ts
 
 
 ├── screens/                      # Telas do aplicativo
+
 │   ├── OS/                       # Funcionalidades de Ordem de Serviço
+
 │   │   ├── ListaOS.tsx
+
 │   │   ├── NovaOS.tsx
+
 │   │   └── ...                   # Detalhes, EditarOS, etc.
 
 
 └── types/                        # Tipos TypeScript e interfaces
+
     └── index.ts
 
 
