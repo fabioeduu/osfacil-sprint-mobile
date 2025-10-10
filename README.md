@@ -4,8 +4,6 @@ Um aplicativo React Native para gerenciamento de ordens de serviço automotivas,
 
 ## 🚗 Funcionalidades
 
-✅ Funcionalidades
-
 Interface moderna com navegação completa
 
 Gestão de Ordens de Serviço, Clientes e Veículos
