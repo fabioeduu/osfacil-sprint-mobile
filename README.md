@@ -157,8 +157,15 @@ O aplicativo utiliza AsyncStorage para persistir dados localmente:
 7. **Implementar notificações**
 8. **Adicionar modo offline**
 
+## Feito por:
 
-## 📄 Licença
+RM-560416 Fabio H S Eduardo
+
+RM-560210 Gabriel Wu Castro
+
+RM-559810 Renato Kenji Sugaki
+
+## Licença
 
 Este projeto é de código aberto e está disponível sob a licença MIT.
 
