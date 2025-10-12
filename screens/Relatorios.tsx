@@ -51,7 +51,6 @@ export default function RelatoriosScreen() {
         titleStyle={styles.headerTitle}
       />
 
-      {/* Filtro de período */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>📅 Período</Text>
         <View style={styles.periodoSelector}>
@@ -69,7 +68,6 @@ export default function RelatoriosScreen() {
         </View>
       </View>
 
-      {/* Cards simples */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>📊 Resumo Geral</Text>
         <View style={styles.grid}>
@@ -80,7 +78,6 @@ export default function RelatoriosScreen() {
         </View>
       </View>
 
-      {/* Resumo extra */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>👥 Clientes Atendidos</Text>
         <Text style={styles.simpleText}>{estat.clientes} clientes </Text>
