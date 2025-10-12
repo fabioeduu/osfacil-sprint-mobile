@@ -72,14 +72,12 @@ export default function DetalhesOSScreen() {
         titleStyle={styles.headerTitle}
       />
 
-      {/* Cliente */}
       <InfoCard title="Cliente" icon="person" color="#3498db">
         {['Nome', 'Telefone', 'Email', 'CPF'].map((f, i) => (
           <InfoRow key={i} label={`${f}:`} value={(os.cliente as any)[f.toLowerCase()]} />
         ))}
       </InfoCard>
 
-      {/* Veículo */}
       <InfoCard title="Veículo" icon="car" color="#e74c3c">
         {['Placa', 'Marca', 'Modelo', 'Ano', 'Cor', 'Km'].map((f, i) => (
           <InfoRow
@@ -90,12 +88,10 @@ export default function DetalhesOSScreen() {
         ))}
       </InfoCard>
 
-      {/* Problema */}
       <InfoCard title="Descrição do Problema" icon="alert-circle" color="#f39c12">
         <Text style={styles.desc}>{os.observacoes || os.observacoesInternas || '—'}</Text>
       </InfoCard>
 
-      {/* Serviços */}
       <InfoCard title="Serviços" icon="construct" color="#9b59b6">
         {os.itens?.length ? (
           os.itens.map((it, i) => (
@@ -109,13 +105,11 @@ export default function DetalhesOSScreen() {
         )}
       </InfoCard>
 
-      {/* Valores */}
       <InfoCard title="Valores" icon="cash" color="#27ae60">
         <InfoRow label="Valor Estimado:" value={`R$ ${os.valorTotal.toFixed(2)}`} />
         <InfoRow label="Valor Final:" value={`R$ ${os.valorFinal.toFixed(2)}`} />
       </InfoCard>
 
-      {/* Datas */}
       <InfoCard title="Datas" icon="calendar" color="#1abc9c">
         {[
           { key: 'dataAbertura', label: 'Data Abertura', value: os.dataAbertura },
@@ -133,14 +127,12 @@ export default function DetalhesOSScreen() {
         )}
       </InfoCard>
 
-      {/* Observações */}
       {os.observacoes && (
         <InfoCard title="Observações" icon="document-text" color="#95a5a6">
           <Text style={styles.desc}>{os.observacoes}</Text>
         </InfoCard>
       )}
 
-      {/* Ações */}
       <View style={styles.actions}>
         {[
           { text: 'Alterar Status', icon: 'refresh', color: '#3498db', fn: changeStatus },
