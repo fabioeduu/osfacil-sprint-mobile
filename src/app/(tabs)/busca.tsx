@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, TextInput, Button, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
 import Container from '../../components/Container';
-import { useOrdens } from '../../src/hooks';
+import { useOrdens } from '../../hooks';
 import { useRouter } from 'expo-router';
 
 export default function BuscaPage() {

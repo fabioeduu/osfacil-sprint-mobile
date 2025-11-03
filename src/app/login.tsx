@@ -74,7 +74,7 @@ export default function LoginPage() {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, justifyContent: 'center' }}>
         <View style={styles.inner}>
           <View style={styles.logoWrap}>
-            <Image source={require('../assets/osfacil.png')} style={styles.logo} resizeMode="contain" />
+            <Image source={require('../../assets/osfacil.png')} style={styles.logo} resizeMode="contain" />
           </View>
           <Text style={styles.title}>Entrar</Text>
           <TextInput

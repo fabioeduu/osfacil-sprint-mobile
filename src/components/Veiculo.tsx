@@ -1,8 +1,8 @@
 import React, { useCallback, useState, useEffect } from 'react';
 import { View, Text, TextInput, Button, FlatList, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
 import Container from './Container';
-import { useVeiculos, useClientes } from '../src/hooks';
-import { Veiculo as VeiculoType, Cliente } from '../src/types';
+import { useVeiculos, useClientes } from '../hooks';
+import { Veiculo as VeiculoType, Cliente } from '../types';
 import { useLocalSearchParams } from 'expo-router';
 
 export default function Veiculo() {

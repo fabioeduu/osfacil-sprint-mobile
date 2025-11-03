@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Container from '../../components/Container';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import { useOrdens, useClientes } from '../../src/hooks';
+import { useOrdens, useClientes } from '../../hooks';
 
 export default function PerfilPage() {
   const router = useRouter();

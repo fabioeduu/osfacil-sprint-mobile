@@ -1,10 +1,10 @@
 ﻿import React, { useCallback, useState } from "react";
 import { View, Text, TextInput, Button, FlatList, TouchableOpacity, StyleSheet, Alert, ScrollView } from "react-native";
 import Container from "../../components/Container";
-import { useOrdens, useClientes, useVeiculos } from "../../src/hooks";
-import useAuth from "../../src/hooks/useAuth";
+import { useOrdens, useClientes, useVeiculos } from "../../hooks";
+import useAuth from "../../hooks/useAuth";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Servico, Cliente } from "../../src/types";
+import { Servico, Cliente } from "../../types";
 
 type Tab = "listar" | "criar" | "editar";
 

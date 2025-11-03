@@ -9,7 +9,7 @@ export default function HomeHeader() {
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <View style={styles.headerSection}>
-        <Image source={require('../assets/osfacil.png')} style={styles.logo} />
+  <Image source={require('../../assets/osfacil.png')} style={styles.logo} />
         <Text style={styles.titulo}>OS Fácil</Text>
         <Text style={styles.subtitulo}>Gerenciador de Ordens de Serviço</Text>
       </View>

@@ -1,9 +1,9 @@
 import React, { useCallback, useState } from "react";
 import { View, Text, TextInput, Button, FlatList, TouchableOpacity, StyleSheet, Alert, ScrollView } from "react-native";
 import Container from "../../components/Container";
-import { useClientes } from '../../src/hooks';
+import { useClientes } from '../../hooks';
 import { useLocalSearchParams } from "expo-router";
-import { Cliente } from '../../src/types';
+import { Cliente } from '../../types';
 
 type Tab = 'listar' | 'criar' | 'editar';
 
