@@ -1,12 +1,12 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const apiClient = axios.create({
+const api = axios.create({
     baseURL: 'https://osfacil.onrender.com',
     timeout: 10000,
 });
 
-apiClient.interceptors.request.use(async (config) => {
+api.interceptors.request.use(async (config) => {
     try {
         if (!config.url?.includes('/login') && !config.url?.includes('/register')) {
             const token = await AsyncStorage.getItem('@osfacil:token');
@@ -24,7 +24,7 @@ apiClient.interceptors.request.use(async (config) => {
     return config;
 });
 
-apiClient.interceptors.response.use(
+api.interceptors.response.use(
     (response) => {
         console.log('[API Interceptor] Response Success:', response.status, response.config.url);
         return response;
@@ -43,4 +43,4 @@ apiClient.interceptors.response.use(
     }
 );
 
-export { apiClient };
+export { api };
