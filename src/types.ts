@@ -18,7 +18,7 @@ export interface OrdemServico {
   observacoes?: string;
   servicos: Servico[];
   valorTotal: number;
-  ownerEmail?: string; // email do usuário que criou a ordem
+  ownerEmail?: string; 
 }
 
 export interface Cliente {
