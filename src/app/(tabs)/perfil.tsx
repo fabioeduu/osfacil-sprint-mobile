@@ -80,6 +80,7 @@ export default function PerfilPage() {
                   style: 'destructive',
                   onPress: async () => {
                     await AsyncStorage.removeItem('@osfacil:token');
+                    await AsyncStorage.removeItem('@osfacil:profile');
                     
                     router.replace('/login');
                   }

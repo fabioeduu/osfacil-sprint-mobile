@@ -3,6 +3,7 @@ import { View, Text, TextInput, StyleSheet, Alert, KeyboardAvoidingView, Platfor
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { register as registerAPI } from '../api/auth';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -45,45 +46,25 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
-      const usersJson = await AsyncStorage.getItem('@osfacil:users');
-      const users = usersJson ? JSON.parse(usersJson) as Array<any> : [];
-      const exists = users.find((u: any) => u.email === email.trim());
-      if (exists) {
-        setError('Já existe uma conta com esse email');
-        Alert.alert('Erro', 'Já existe uma conta com esse email');
-        setLoading(false);
-        return;
-      }
-
-      const profile = {
-        nome: nome.trim(),
+      await registerAPI({
         email: email.trim(),
-        endereco: endereco.trim(),
+        password: senha,
+        nome: nome.trim(),
         cpf: rawCpf,
         telefone: rawTelefone,
-        cpfFormatado: formatCpf(rawCpf),
-        telefoneFormatado: formatTelefone(rawTelefone),
-        role: 'user',
-      } as const;
-
-  users.push({ ...profile, senha });
-      await AsyncStorage.setItem('@osfacil:users', JSON.stringify(users));
-
-      await AsyncStorage.setItem('@osfacil:profile', JSON.stringify(profile));
-
-      await AsyncStorage.setItem('@osfacil:token', JSON.stringify({ email: email.trim(), role: 'user' }));
-
-      router.replace('/(tabs)/home');
-    } catch (e) {
-      console.error('register error', e);
-      Alert.alert('Erro', 'Não foi possível cadastrar');
-      setError('Erro ao cadastrar. Tente novamente.');
+        endereco: endereco.trim(),
+      });
+      Alert.alert('Sucesso', 'Cadastro realizado! Faça login agora.');
+      router.replace('/login');
+    } catch (error: any) {
+      console.error('Erro ao registrar:', error);
+      setError(error.response?.data?.message || 'Erro ao registrar');
+      Alert.alert('Erro', error.response?.data?.message || 'Falha ao registrar');
     } finally {
       setLoading(false);
     }
   };
 
-  
   const onlyDigits = (s: string) => s.replace(/\D/g, '');
 
   const formatCpf = (text: string) => {

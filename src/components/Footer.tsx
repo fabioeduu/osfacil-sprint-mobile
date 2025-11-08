@@ -7,24 +7,24 @@ export default function FooterNav() {
   const pathname = usePathname() ?? '';
 
   const tabs = [
-    { name: 'Início', icon: 'home-outline', route: 'home' },
-    { name: 'Buscar', icon: 'search-outline', route: 'busca' },
-    { name: 'Ordens', icon: 'file-tray-full-outline', route: 'ordem' },
-    { name: 'Clientes', icon: 'people-outline', route: 'clientes' },
-    { name: 'Perfil', icon: 'person-outline', route: 'perfil' },
+    { name: 'Início', icon: 'home-outline', route: '/(tabs)/home' },
+    { name: 'Buscar', icon: 'search-outline', route: '/(tabs)/busca' },
+    { name: 'Ordens', icon: 'file-tray-full-outline', route: '/(tabs)/ordem' },
+    { name: 'Clientes', icon: 'people-outline', route: '/(tabs)/clientes' },
+    { name: 'Perfil', icon: 'person-outline', route: '/(tabs)/perfil' },
   ];
 
   return (
     <View style={styles.container}>
       {tabs.map((tab) => {
-        const routePath = `/${tab.route}`;
-        const isActive = pathname.startsWith(routePath);
+        const routeName = tab.route.split('/').pop() || '';
+        const isActive = pathname.includes(routeName);
 
         return (
           <TouchableOpacity
             key={tab.name}
             accessibilityRole="button"
-            onPress={() => router.push(routePath)}
+            onPress={() => router.push(tab.route)}
             style={styles.tab}
           >
             <Ionicons

@@ -3,30 +3,25 @@ import { View, Text, TextInput, StyleSheet, Alert, ActivityIndicator, KeyboardAv
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { login as loginAPI } from '../api/auth';
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [loading, setLoading] = useState(true);
+  const [loggingIn, setLoggingIn] = useState(false);
 
   useEffect(() => {
     (async () => {
       try {
-        const usersJson = await AsyncStorage.getItem('@osfacil:users');
-        const users = usersJson ? JSON.parse(usersJson) as Array<any> : [];
-        if (users.length === 0) {
-          const admin = { email: 'admin@osfacil', senha: 'admin123', nome: 'Administrador', role: 'admin' };
-          await AsyncStorage.setItem('@osfacil:users', JSON.stringify([admin]));
-        }
-
         const token = await AsyncStorage.getItem('@osfacil:token');
         if (token) {
           router.replace('/(tabs)/home');
           return;
         }
       } catch (e) {
-        Alert.alert('Erro', 'Não foi possivel fazer login');
+        Alert.alert('Erro', 'Não foi possível verificar autenticação');
       }
       setLoading(false);
     })();
@@ -38,26 +33,17 @@ export default function LoginPage() {
       return;
     }
 
+    setLoggingIn(true);
     try {
-      const usersJson = await AsyncStorage.getItem('@osfacil:users');
-      const users = usersJson ? JSON.parse(usersJson) as Array<any> : [];
-      if (!users || users.length === 0) {
-        Alert.alert('Erro', 'Conta não encontrada. Cadastre-se primeiro.');
-        return router.push('/register');
-      }
-      const user = users.find(u => u.email === email.trim() && u.senha === senha);
-      if (!user) {
-        Alert.alert('Erro', 'Email ou senha inválidos');
-        return;
-      }
-
-      await AsyncStorage.setItem('@osfacil:token', JSON.stringify({ email: user.email, role: user.role }));
-      const profile = { nome: user.nome || '', email: user.email, role: user.role };
+      const response = await loginAPI({ email: email.trim(), password: senha });
+      await AsyncStorage.setItem('@osfacil:token', response.tokenAcesso);
+      const profile = { nome: response.nome, email: response.email, role: 'user' };
       await AsyncStorage.setItem('@osfacil:profile', JSON.stringify(profile));
       router.replace('/(tabs)/home');
-    } catch (e) {
-      console.error(e);
-      Alert.alert('Erro', 'Não foi possível efetuar login');
+    } catch (e: any) {
+      console.error('Erro ao fazer login:', e);
+      Alert.alert('Erro', e.response?.data?.message || 'Falha ao fazer login');
+      setLoggingIn(false);
     }
   };
 
@@ -85,6 +71,7 @@ export default function LoginPage() {
             style={styles.input}
             keyboardType="email-address"
             autoCapitalize="none"
+            editable={!loggingIn}
           />
           <TextInput
             placeholder="Senha"
@@ -93,13 +80,26 @@ export default function LoginPage() {
             onChangeText={setSenha}
             style={styles.input}
             secureTextEntry
+            editable={!loggingIn}
           />
 
-          <TouchableOpacity style={styles.primaryButton} onPress={handleLogin}>
-            <Text style={styles.primaryButtonText}>Entrar</Text>
+          <TouchableOpacity 
+            style={[styles.primaryButton, loggingIn && { opacity: 0.6 }]} 
+            onPress={handleLogin}
+            disabled={loggingIn}
+          >
+            {loggingIn ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={styles.primaryButtonText}>Entrar</Text>
+            )}
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.secondaryButton} onPress={() => router.push('/register')}>
+          <TouchableOpacity 
+            style={styles.secondaryButton} 
+            onPress={() => router.push('/register')}
+            disabled={loggingIn}
+          >
             <Text style={styles.secondaryButtonText}>Cadastrar</Text>
           </TouchableOpacity>
         </View>
