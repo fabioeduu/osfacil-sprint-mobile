@@ -1,60 +1,68 @@
 import { useCallback, useEffect, useState } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Cliente } from '../types';
-
-const CLIENTES_KEY = '@osfacil:clientes';
-
-function genId() {
-  return `${Date.now().toString(36)}-${Math.floor(Math.random() * 1e9).toString(36)}`;
-}
+import { getClientes, postCliente, putCliente, deleteCliente } from '../api/cliente';
 
 export function useClientes() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
-      const json = await AsyncStorage.getItem(CLIENTES_KEY);
-      const data: Cliente[] = json ? JSON.parse(json) : [];
-      setClientes(data.reverse());
+      const data = await getClientes();
+      setClientes(Array.isArray(data) ? data.reverse() : []);
+    } catch (err: any) {
+      console.error('Erro ao carregar clientes:', err);
+      setError(err.response?.status === 403 ? 'Acesso negado à API' : 'Erro ao carregar clientes');
+      setClientes([]);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const save = useCallback(async (data: Cliente[]) => {
-    await AsyncStorage.setItem(CLIENTES_KEY, JSON.stringify(data));
-  }, []);
-
   const criar = useCallback(async (p: Omit<Cliente, 'id' | 'dataCadastro'>) => {
-    const json = await AsyncStorage.getItem(CLIENTES_KEY);
-    const list: Cliente[] = json ? JSON.parse(json) : [];
-    const cliente: Cliente = { id: genId(), ...p, dataCadastro: new Date().toISOString() } as Cliente;
-    list.push(cliente);
-    await save(list);
-    await load();
-    return cliente;
-  }, [load, save]);
+    try {
+      const novoCliente = await postCliente(p);
+      await load();
+      return novoCliente;
+    } catch (err: any) {
+      console.error('Erro ao criar cliente:', err);
+      setError('Erro ao criar cliente');
+      throw err;
+    }
+  }, [load]);
 
   const atualizar = useCallback(async (c: Cliente) => {
-    const json = await AsyncStorage.getItem(CLIENTES_KEY);
-    const list: Cliente[] = json ? JSON.parse(json) : [];
-    const idx = list.findIndex(x => x.id === c.id);
-    if (idx >= 0) list[idx] = c;
-    await save(list);
-    await load();
-  }, [load, save]);
+    try {
+      await putCliente({
+        id: c.id,
+        nome: c.nome,
+        email: c.email,
+        telefone: c.telefone,
+        endereco: c.endereco,
+      });
+      await load();
+    } catch (err: any) {
+      console.error('Erro ao atualizar cliente:', err);
+      setError('Erro ao atualizar cliente');
+      throw err;
+    }
+  }, [load]);
 
   const remover = useCallback(async (id: string) => {
-    const json = await AsyncStorage.getItem(CLIENTES_KEY);
-    const list: Cliente[] = json ? JSON.parse(json) : [];
-    const filtered = list.filter(x => x.id !== id);
-    await save(filtered);
-    await load();
-  }, [load, save]);
+    try {
+      await deleteCliente(id);
+      await load();
+    } catch (err: any) {
+      console.error('Erro ao remover cliente:', err);
+      setError('Erro ao remover cliente');
+      throw err;
+    }
+  }, [load]);
 
   useEffect(() => { load(); }, [load]);
 
-  return { clientes, loading, load, criar, atualizar, remover };
+  return { clientes, loading, error, load, criar, atualizar, remover };
 }
