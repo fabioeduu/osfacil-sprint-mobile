@@ -1,60 +1,70 @@
 import { useCallback, useEffect, useState } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Veiculo } from '../types';
-
-const VEICULOS_KEY = '@osfacil:veiculos';
-
-function genId() {
-  return `${Date.now().toString(36)}-${Math.floor(Math.random() * 1e9).toString(36)}`;
-}
+import { getVeiculos, postVeiculo, putVeiculo, deleteVeiculo } from '../api/veiculo';
 
 export function useVeiculos() {
   const [veiculos, setVeiculos] = useState<Veiculo[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
-      const json = await AsyncStorage.getItem(VEICULOS_KEY);
-      const data: Veiculo[] = json ? JSON.parse(json) : [];
-      setVeiculos(data.reverse());
+      const data = await getVeiculos();
+      setVeiculos(Array.isArray(data) ? data.reverse() : []);
+    } catch (err: any) {
+      console.error('Erro ao carregar veículos:', err);
+      setError(err.response?.status === 403 ? 'Acesso negado à API' : 'Erro ao carregar veículos');
+      setVeiculos([]);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const save = useCallback(async (data: Veiculo[]) => {
-    await AsyncStorage.setItem(VEICULOS_KEY, JSON.stringify(data));
-  }, []);
-
   const criar = useCallback(async (p: Omit<Veiculo, 'id' | 'dataCadastro'>) => {
-    const json = await AsyncStorage.getItem(VEICULOS_KEY);
-    const list: Veiculo[] = json ? JSON.parse(json) : [];
-    const v: Veiculo = { id: genId(), ...p, dataCadastro: new Date().toISOString() } as Veiculo;
-    list.push(v);
-    await save(list);
-    await load();
-    return v;
-  }, [load, save]);
+    try {
+      const novoVeiculo = await postVeiculo(p);
+      await load();
+      return novoVeiculo;
+    } catch (err: any) {
+      console.error('Erro ao criar veículo:', err);
+      setError('Erro ao criar veículo');
+      throw err;
+    }
+  }, [load]);
 
   const atualizar = useCallback(async (v: Veiculo) => {
-    const json = await AsyncStorage.getItem(VEICULOS_KEY);
-    const list: Veiculo[] = json ? JSON.parse(json) : [];
-    const idx = list.findIndex(x => x.id === v.id);
-    if (idx >= 0) list[idx] = v;
-    await save(list);
-    await load();
-  }, [load, save]);
+    try {
+      await putVeiculo({
+        id: v.id,
+        marca: v.marca,
+        modelo: v.modelo,
+        placa: v.placa,
+        ano: v.ano,
+        cor: v.cor,
+        clienteId: v.clienteId,
+      });
+      await load();
+    } catch (err: any) {
+      console.error('Erro ao atualizar veículo:', err);
+      setError('Erro ao atualizar veículo');
+      throw err;
+    }
+  }, [load]);
 
   const remover = useCallback(async (id: string) => {
-    const json = await AsyncStorage.getItem(VEICULOS_KEY);
-    const list: Veiculo[] = json ? JSON.parse(json) : [];
-    const filtered = list.filter(x => x.id !== id);
-    await save(filtered);
-    await load();
-  }, [load, save]);
+    try {
+      await deleteVeiculo(id);
+      await load();
+    } catch (err: any) {
+      console.error('Erro ao remover veículo:', err);
+      setError('Erro ao remover veículo');
+      throw err;
+    }
+  }, [load]);
 
   useEffect(() => { load(); }, [load]);
 
-  return { veiculos, loading, load, criar, atualizar, remover };
+  return { veiculos, loading, error, load, criar, atualizar, remover };
 }
