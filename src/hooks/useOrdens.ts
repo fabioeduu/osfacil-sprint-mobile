@@ -1,93 +1,74 @@
 import { useCallback, useEffect, useState } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getEmail, isAdmin } from './useAuth';
 import { OrdemServico } from '../types';
-
-const ORDENS_KEY = '@osfacil:ordens';
-
-function genId() {
-  return `${Date.now().toString(36)}-${Math.floor(Math.random() * 1e9).toString(36)}`;
-}
+import { getOrdensServico, postOrdemServico, putOrdemServico, deleteOrdemServico } from '../api/ordemServico';
 
 export function useOrdens() {
   const [ordens, setOrdens] = useState<OrdemServico[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
-      const json = await AsyncStorage.getItem(ORDENS_KEY);
-      const data: OrdemServico[] = json ? JSON.parse(json) : [];
-      // apply role-based filtering: admins see all, users see only orders they created
-      try {
-        const admin = await isAdmin();
-        if (admin) {
-          setOrdens(data.reverse());
-        } else {
-          const email = await getEmail();
-          if (email) {
-            const filtered = data.filter(d => (d.ownerEmail || '').toLowerCase() === email.toLowerCase());
-            setOrdens(filtered.reverse());
-          } else {
-            setOrdens([]);
-          }
-        }
-      } catch (e) {
-        setOrdens(data.reverse());
-      }
+      const data = await getOrdensServico();
+      setOrdens(Array.isArray(data) ? data.reverse() : []);
+    } catch (err: any) {
+      console.error('Erro ao carregar ordens de serviço:', err);
+      setError(err.response?.status === 403 ? 'Acesso negado à API' : 'Erro ao carregar ordens de serviço');
+      setOrdens([]);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const save = useCallback(async (data: OrdemServico[]) => {
-    await AsyncStorage.setItem(ORDENS_KEY, JSON.stringify(data));
-  }, []);
-
   const criar = useCallback(async (p: Partial<OrdemServico>) => {
-    const json = await AsyncStorage.getItem(ORDENS_KEY);
-    const list: OrdemServico[] = json ? JSON.parse(json) : [];
-    const nextNumero = (list.reduce((max, o) => Math.max(max, o.numero || 0), 0) || 0) + 1;
-    const servicos = (p.servicos || []) as any[];
-    const valorTotal = servicos.reduce((s, it) => s + (Number(it.valor) || 0), 0);
-    const owner = await getEmail();
-    const ordem: OrdemServico = {
-      id: genId(),
-      numero: nextNumero,
-      clienteId: p.clienteId,
-      veiculoId: p.veiculoId,
-      dataAbertura: new Date().toISOString(),
-      status: (p.status as any) || 'ABERTA',
-      defeito: p.defeito || '',
-      observacoes: p.observacoes || '',
-      servicos: servicos as any,
-      valorTotal,
-      ownerEmail: owner || undefined,
-    } as OrdemServico;
-    list.push(ordem);
-    await save(list);
-    await load();
-    return ordem;
-  }, [load, save]);
+    try {
+      const novaOrdem = await postOrdemServico(p as Omit<OrdemServico, 'id'>);
+      await load();
+      return novaOrdem;
+    } catch (err: any) {
+      console.error('Erro ao criar ordem de serviço:', err);
+      setError('Erro ao criar ordem de serviço');
+      throw err;
+    }
+  }, [load]);
 
   const atualizar = useCallback(async (o: OrdemServico) => {
-    const json = await AsyncStorage.getItem(ORDENS_KEY);
-    const list: OrdemServico[] = json ? JSON.parse(json) : [];
-    const idx = list.findIndex(x => x.id === o.id);
-    if (idx >= 0) list[idx] = o;
-    await save(list);
-    await load();
-  }, [load, save]);
+    try {
+      await putOrdemServico({
+        id: o.id,
+        numero: o.numero,
+        clienteId: o.clienteId,
+        veiculoId: o.veiculoId,
+        dataAbertura: o.dataAbertura,
+        dataConclusao: o.dataConclusao,
+        status: o.status,
+        defeito: o.defeito,
+        observacoes: o.observacoes,
+        servicos: o.servicos,
+        valorTotal: o.valorTotal,
+      });
+      await load();
+    } catch (err: any) {
+      console.error('Erro ao atualizar ordem de serviço:', err);
+      setError('Erro ao atualizar ordem de serviço');
+      throw err;
+    }
+  }, [load]);
 
   const remover = useCallback(async (id: string) => {
-    const json = await AsyncStorage.getItem(ORDENS_KEY);
-    const list: OrdemServico[] = json ? JSON.parse(json) : [];
-    const filtered = list.filter(x => x.id !== id);
-    await save(filtered);
-    await load();
-  }, [load, save]);
+    try {
+      await deleteOrdemServico(id);
+      await load();
+    } catch (err: any) {
+      console.error('Erro ao remover ordem de serviço:', err);
+      setError('Erro ao remover ordem de serviço');
+      throw err;
+    }
+  }, [load]);
 
   useEffect(() => { load(); }, [load]);
 
-  return { ordens, loading, load, criar, atualizar, remover };
+  return { ordens, loading, error, load, criar, atualizar, remover };
 }
