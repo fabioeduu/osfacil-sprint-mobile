@@ -1,17 +1,22 @@
-﻿import React, { useCallback, useState } from "react";
-import { View, Text, TextInput, Button, FlatList, TouchableOpacity, StyleSheet, Alert, ScrollView } from "react-native";
+﻿import React, { useState } from "react";
+import { View, Text, TouchableOpacity, StyleSheet, Alert } from "react-native";
 import Container from "../../components/Container";
 import { useOrdens, useClientes, useVeiculos } from "../../hooks";
 import useAuth from "../../hooks/useAuth";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Servico, Cliente } from "../../types";
+import { Servico, Cliente, Veiculo, OrdemServico, StatusOrdem } from "../../types";
+import { useAppTheme } from '../../theme';
+import OrdemListTab from "../../components/ordem/OrdemListTab";
+import OrdemCreateTab from "../../components/ordem/OrdemCreateTab";
+import OrdemEditTab from "../../components/ordem/OrdemEditTab";
 
 type Tab = "listar" | "criar" | "editar";
 
 export default function OrdensPage() {
+  const { colors } = useAppTheme();
   const { id: queryId } = useLocalSearchParams();
   const [tab, setTab] = useState<Tab>("listar");
-  const { ordens, loading: loadingOrdens, load: loadOrdens, criar, atualizar, remover } = useOrdens();
+  const { ordens, loading: loadingOrdens, criar, atualizar, remover } = useOrdens();
   const { clientes } = useClientes();
   const { veiculos } = useVeiculos();
   const auth = useAuth();
@@ -20,37 +25,50 @@ export default function OrdensPage() {
   const [clienteId, setClienteId] = useState<string>("");
   const [clienteSelecionado, setClienteSelecionado] = useState<Cliente | null>(null);
   const [veiculoId, setVeiculoId] = useState<string>("");
-  const [veiculoSelecionado, setVeiculoSelecionado] = useState<any | null>(null);
+  const [veiculoSelecionado, setVeiculoSelecionado] = useState<Veiculo | null>(null);
   const [servicoDesc, setServicoDesc] = useState("");
   const [servicoValor, setServicoValor] = useState("");
   const [servicos, setServicos] = useState<Servico[]>([]);
-  const [selectedOrdem, setSelectedOrdem] = useState<any | null>(null);
+  const [selectedOrdem, setSelectedOrdem] = useState<OrdemServico | null>(null);
   const [editObservacoes, setEditObservacoes] = useState("");
-  const [editStatus, setEditStatus] = useState("ABERTA");
+  const [editStatus, setEditStatus] = useState<StatusOrdem>("ABERTA");
   const [showClienteList, setShowClienteList] = useState(false);
   const [showVeiculoList, setShowVeiculoList] = useState(false);
   const router = useRouter();
+  const canManageOrdens = auth.isAuthenticated;
+  const ordensVisiveis = ordens;
+
+  const ensureCanManageOrdens = () => {
+    if (canManageOrdens) return true;
+    Alert.alert('Permissao', 'Voce precisa estar logado para criar, editar ou remover ordens.');
+    return false;
+  };
 
   React.useEffect(() => {
     
     if (loadingOrdens) return;
     if (queryId) {
-      const o = ordens.find(x => x.id === String(queryId));
+      const o = ordensVisiveis.find(x => x.id === String(queryId));
       if (o) {
         setSelectedOrdem(o);
         setEditObservacoes(o.observacoes || "");
         setEditStatus(o.status || "ABERTA");
-        setTab("editar");
+        if (canManageOrdens) setTab("editar");
       }
     }
-  }, [queryId, loadingOrdens, ordens]);
+  }, [queryId, loadingOrdens, ordensVisiveis, canManageOrdens]);
 
   const addServico = () => {
-    if (!servicoDesc || !servicoValor) {
+    if (!servicoDesc.trim() || !servicoValor) {
       Alert.alert("Erro", "Preencha descrição e valor");
       return;
     }
-    setServicos([...servicos, { id: String(Date.now()), descricao: servicoDesc, valor: Number(servicoValor) }]);
+    const parsedValue = Number(String(servicoValor).replace(',', '.'));
+    if (!Number.isFinite(parsedValue) || parsedValue <= 0) {
+      Alert.alert("Erro", "Informe um valor válido para o serviço");
+      return;
+    }
+    setServicos([...servicos, { id: String(Date.now()), descricao: servicoDesc.trim(), valor: parsedValue }]);
     setServicoDesc("");
     setServicoValor("");
   };
@@ -64,13 +82,14 @@ export default function OrdensPage() {
     setVeiculoSelecionado(null);
   };
 
-  const selecionarVeiculo = (v: any) => {
+  const selecionarVeiculo = (v: Veiculo) => {
     setVeiculoId(v.id);
     setVeiculoSelecionado(v);
     setShowVeiculoList(false);
   };
 
   const salvarNova = async () => {
+    if (!ensureCanManageOrdens()) return;
     try {
       if (!defeito.trim()) {
         Alert.alert("Erro", "Preencha o defeito");
@@ -102,13 +121,19 @@ export default function OrdensPage() {
       setServicos([]);
       setTab("listar");
       
-    } catch (e) {
-      Alert.alert("Erro", "Não foi possível salvar");
+    } catch (e: any) {
+      const message =
+        e?.response?.data?.message ||
+        e?.response?.data?.error ||
+        e?.message ||
+        "Não foi possível salvar";
+      Alert.alert("Erro", String(message));
     }
   };
 
   const abrirEditar = async (id: string) => {
-    const o = ordens.find(x => x.id === id);
+    if (!ensureCanManageOrdens()) return;
+    const o = ordensVisiveis.find(x => x.id === id);
     if (o) {
       setSelectedOrdem(o);
       setEditObservacoes(o.observacoes || "");
@@ -119,18 +144,25 @@ export default function OrdensPage() {
 
   const salvarEdicao = async () => {
     if (!selectedOrdem) return;
+    if (!ensureCanManageOrdens()) return;
     try {
       const updated = { ...selectedOrdem, observacoes: editObservacoes, status: editStatus };
       await atualizar(updated);
       Alert.alert("Sucesso", "Ordem atualizada");
       setTab("listar");
       
-    } catch (e) {
-      Alert.alert("Erro", "Não foi possível atualizar");
+    } catch (e: any) {
+      const message =
+        e?.response?.data?.message ||
+        e?.response?.data?.error ||
+        e?.message ||
+        "Não foi possível atualizar";
+      Alert.alert("Erro", String(message));
     }
   };
 
   const handleDelete = (id: string) => {
+    if (!ensureCanManageOrdens()) return;
     Alert.alert("Confirmar", "Deseja excluir?", [
       { text: "Cancelar", style: "cancel" },
       {
@@ -149,222 +181,128 @@ export default function OrdensPage() {
     return cliente?.nome || "Cliente desconhecido";
   };
 
+  const getVeiculoDescricao = (id?: string) => {
+    const veiculo = veiculos.find(v => v.id === id);
+    return `${veiculo?.marca || ''} ${veiculo?.modelo || ''} ${veiculo?.placa ? '— ' + veiculo.placa : ''}`;
+  };
+
   return (
     <Container>
-      <View style={styles.tabs}>
-        <TouchableOpacity style={[styles.tab, tab === "listar" && styles.tabActive]} onPress={() => setTab("listar")}>
-          <Text style={[styles.tabText, tab === "listar" && styles.tabTextActive]}>Listar</Text>
+      <View style={[styles.tabs, { borderColor: colors.border }]}> 
+        <TouchableOpacity style={[styles.tab, tab === "listar" && { borderColor: colors.primary, borderBottomWidth: 2 }]} onPress={() => setTab("listar")}>
+          <Text style={[styles.tabText, { color: colors.textMuted }, tab === "listar" && { color: colors.primary, fontWeight: '700' }]}>Listar</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.tab, tab === "criar" && styles.tabActive]} onPress={() => setTab("criar")}>
-          <Text style={[styles.tabText, tab === "criar" && styles.tabTextActive]}>Criar</Text>
+        <TouchableOpacity
+          style={[styles.tab, tab === "criar" && { borderColor: colors.primary, borderBottomWidth: 2 }, !canManageOrdens && { opacity: 0.5 }]}
+          onPress={() => (canManageOrdens ? setTab("criar") : ensureCanManageOrdens())}
+        >
+          <Text style={[styles.tabText, { color: colors.textMuted }, tab === "criar" && { color: colors.primary, fontWeight: '700' }]}>Criar</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.tab, tab === "editar" && styles.tabActive]} onPress={() => setTab("editar")}>
-          <Text style={[styles.tabText, tab === "editar" && styles.tabTextActive]}>Editar</Text>
+        <TouchableOpacity
+          style={[styles.tab, tab === "editar" && { borderColor: colors.primary, borderBottomWidth: 2 }, !canManageOrdens && { opacity: 0.5 }]}
+          onPress={() => (canManageOrdens ? setTab("editar") : ensureCanManageOrdens())}
+        >
+          <Text style={[styles.tabText, { color: colors.textMuted }, tab === "editar" && { color: colors.primary, fontWeight: '700' }]}>Editar</Text>
         </TouchableOpacity>
       </View>
 
       {tab === "listar" && (
-        <View style={{ flex: 1 }}>
-          <Text style={styles.title}>Ordens de Serviço</Text>
-          <FlatList
-            data={ordens}
-            keyExtractor={(o) => o.id}
-            renderItem={({ item }) => {
-              const canModify = auth.isAdmin() || (auth.email && item.ownerEmail && auth.email.toLowerCase() === item.ownerEmail.toLowerCase());
-              return (
-                <View style={styles.item}>
-                  <Text style={styles.itemTitle}>Ordem #{item.numero}  {item.status}</Text>
-                  <Text style={styles.clienteInfo}>👤 {getNomeCliente(item.clienteId)}</Text>
-                  <Text numberOfLines={2}>{item.defeito}</Text>
-                  <Text style={styles.itemSmall}>R$ {Number(item.valorTotal).toFixed(2)}</Text>
-                  <View style={{ flexDirection: "row", marginTop: 8, gap: 8 }}>
-                    {canModify ? (
-                      <>
-                        <Button title="Editar" onPress={() => abrirEditar(item.id)} />
-                        <Button color="#d9534f" title="Excluir" onPress={() => handleDelete(item.id)} />
-                      </>
-                    ) : (
-                      <Text style={{ color: '#999', fontSize: 12, alignSelf: 'center' }}>Apenas administrador ou dono pode editar/excluir</Text>
-                    )}
-                  </View>
-                </View>
-              );
-            }}
-          />
-        </View>
+        <OrdemListTab
+          colors={colors}
+          styles={styles}
+          loadingOrdens={loadingOrdens}
+          ordens={ordensVisiveis}
+          auth={{ email: auth.email, isFuncionario: canManageOrdens, isAdmin: auth.isAdmin }}
+          getNomeCliente={getNomeCliente}
+          onEditar={abrirEditar}
+          onExcluir={handleDelete}
+        />
       )}
-
-      {tab === "criar" && (
-        <ScrollView style={{ flex: 1 }}>
-          <Text style={styles.title}>Nova Ordem</Text>
-          
-          <Text style={styles.label}>Cliente *</Text>
-          <TouchableOpacity 
-            style={styles.clienteButton}
-            onPress={() => setShowClienteList(!showClienteList)}
-          >
-            <Text style={styles.clienteButtonText}>
-              {clienteSelecionado ? clienteSelecionado.nome : "Selecione um cliente"}
-            </Text>
-          </TouchableOpacity>
-
-          {showClienteList && (
-            <View style={styles.clienteListContainer}>
-              <FlatList
-                data={clientes}
-                keyExtractor={(c) => c.id}
-                scrollEnabled={false}
-                renderItem={({ item }) => (
-                  <TouchableOpacity 
-                    style={styles.clienteListItem}
-                    onPress={() => selecionarCliente(item)}
-                  >
-                    <Text style={styles.clienteListItemText}>{item.nome}</Text>
-                    {item.telefone && <Text style={styles.clienteListItemPhone}>{item.telefone}</Text>}
-                  </TouchableOpacity>
-                )}
-              />
-            </View>
-          )}
-
-              <Text style={styles.label}>Veículo *</Text>
-              <TouchableOpacity 
-                style={styles.clienteButton}
-                onPress={() => setShowVeiculoList(!showVeiculoList)}
-              >
-                <Text style={styles.clienteButtonText}>
-                  {veiculoSelecionado ? `${veiculoSelecionado.marca} ${veiculoSelecionado.modelo} — ${veiculoSelecionado.placa}` : (clienteSelecionado ? 'Selecione um veículo' : 'Selecione um cliente primeiro')}
-                </Text>
-              </TouchableOpacity>
-
-              {showVeiculoList && (
-                <View style={styles.clienteListContainer}>
-                  <FlatList
-                    data={veiculos.filter(v => v.clienteId === clienteId)}
-                    keyExtractor={(v) => v.id}
-                    scrollEnabled={false}
-                    renderItem={({ item }) => (
-                      <TouchableOpacity 
-                        style={styles.clienteListItem}
-                        onPress={() => selecionarVeiculo(item)}
-                      >
-                        <Text style={styles.clienteListItemText}>{item.marca} {item.modelo} — {item.placa}</Text>
-                      </TouchableOpacity>
-                    )}
-                  />
-                  <TouchableOpacity style={{ padding: 12, alignItems: 'center' }} onPress={() => router.push('/(tabs)/veiculos?clienteId=' + (clienteId || ''))}>
-                    <Text style={{ color: '#2596be', fontWeight: '600' }}>Cadastrar veículo</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-
-          <Text style={styles.label}>Defeito *</Text>
-          <TextInput 
-            placeholder="Descreva o defeito" 
-            value={defeito} 
-            onChangeText={setDefeito} 
-            style={styles.input} 
-          />
-          
-          <Text style={styles.label}>Observações</Text>
-          <TextInput
-            placeholder="Observações adicionais"
-            value={observacoes}
-            onChangeText={setObservacoes}
-            style={[styles.input, { height: 60 }]}
-            multiline
-          />
-          
-          <Text style={styles.label}>Serviços</Text>
-          <TextInput 
-            placeholder="Descrição do serviço" 
-            value={servicoDesc} 
-            onChangeText={setServicoDesc} 
-            style={styles.input} 
-          />
-          <TextInput 
-            placeholder="Valor (R$)" 
-            value={servicoValor} 
-            onChangeText={setServicoValor} 
-            keyboardType="numeric" 
-            style={styles.input} 
-          />
-          <Button title="Adicionar Serviço" onPress={addServico} />
-          
-          <FlatList
-            data={servicos}
-            keyExtractor={(s) => s.id}
-            scrollEnabled={false}
-            renderItem={({ item }) => (
-              <View style={styles.servicoItem}>
-                <Text>{item.descricao} - R$ {item.valor.toFixed(2)}</Text>
-              </View>
-            )}
-          />
-          
-          <View style={{ marginTop: 12, marginBottom: 20 }}>
-            <Button title="Salvar Ordem" onPress={salvarNova} />
-          </View>
-        </ScrollView>
+      {tab === "criar" && canManageOrdens && (
+        <OrdemCreateTab
+          colors={colors}
+          styles={styles}
+          clientes={clientes}
+          veiculos={veiculos}
+          clienteId={clienteId}
+          clienteSelecionado={clienteSelecionado}
+          veiculoSelecionado={veiculoSelecionado}
+          showClienteList={showClienteList}
+          showVeiculoList={showVeiculoList}
+          defeito={defeito}
+          observacoes={observacoes}
+          servicoDesc={servicoDesc}
+          servicoValor={servicoValor}
+          servicos={servicos}
+          onToggleClienteList={() => setShowClienteList(!showClienteList)}
+          onToggleVeiculoList={() => setShowVeiculoList(!showVeiculoList)}
+          onSelecionarCliente={selecionarCliente}
+          onSelecionarVeiculo={selecionarVeiculo}
+          onGoCadastrarVeiculo={() => router.push('/(tabs)/veiculos?clienteId=' + (clienteId || ''))}
+          onDefeitoChange={setDefeito}
+          onObservacoesChange={setObservacoes}
+          onServicoDescChange={setServicoDesc}
+          onServicoValorChange={setServicoValor}
+          onAddServico={addServico}
+          onSalvar={salvarNova}
+        />
       )}
-
-      {tab === "editar" && (
-        <ScrollView style={{ flex: 1 }}>
-          {selectedOrdem ? (
-            <>
-              <Text style={styles.title}>Ordem #{selectedOrdem.numero}</Text>
-              <Text style={styles.clienteInfo}>👤 {getNomeCliente(selectedOrdem.clienteId)}</Text>
-              <Text style={styles.clienteInfo}>🚗 {veiculos.find(v => v.id === selectedOrdem.veiculoId)?.marca || ''} {veiculos.find(v => v.id === selectedOrdem.veiculoId)?.modelo || ''} {veiculos.find(v => v.id === selectedOrdem.veiculoId)?.placa ? '— ' + veiculos.find(v => v.id === selectedOrdem.veiculoId)?.placa : ''}</Text>
-              <Text style={styles.label}>Status</Text>
-              <View style={{ flexDirection: "row", gap: 4, flexWrap: "wrap", marginBottom: 12 }}>
-                {["ABERTA", "EM_ANDAMENTO", "AGUARDANDO_PECAS", "CONCLUIDA", "CANCELADA"].map((s) => (
-                  <TouchableOpacity
-                    key={s}
-                    style={[styles.statusBtn, editStatus === s && styles.statusBtnActive]}
-                    onPress={() => setEditStatus(s)}
-                  >
-                    <Text style={{ color: editStatus === s ? "#fff" : "#333", fontSize: 12 }}>{s}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              <Text style={styles.label}>Observações</Text>
-              <TextInput value={editObservacoes} onChangeText={setEditObservacoes} style={[styles.input, { height: 80 }]} multiline />
-              <View style={{ marginTop: 12, marginBottom: 20 }}>
-                <Button title="Salvar" onPress={salvarEdicao} />
-              </View>
-            </>
-          ) : (
-            <Text style={{ marginTop: 20, textAlign: "center" }}>Selecione uma ordem</Text>
-          )}
-        </ScrollView>
+      {tab === "editar" && canManageOrdens && (
+        <OrdemEditTab
+          colors={colors}
+          styles={styles}
+          selectedOrdem={selectedOrdem}
+          editStatus={editStatus}
+          editObservacoes={editObservacoes}
+          getNomeCliente={getNomeCliente}
+          getVeiculoDescricao={getVeiculoDescricao}
+          onEditStatus={setEditStatus}
+          onEditObservacoes={setEditObservacoes}
+          onSalvar={salvarEdicao}
+        />
       )}
     </Container>
   );
 }
 
 const styles = StyleSheet.create({
-  tabs: { flexDirection: "row", borderBottomWidth: 2, borderColor: "#eee", marginBottom: 12 },
+  tabs: { flexDirection: "row", borderBottomWidth: 2, 
+    borderColor: "#eee", 
+    marginBottom: 12 },
+
   tab: { flex: 1, paddingVertical: 10, alignItems: "center" },
+
   tabActive: { borderBottomWidth: 2, borderColor: "#2596be" },
+
   tabText: { fontSize: 14, color: "#666" },
-  tabTextActive: { color: "#2596be", fontWeight: "bold" },
+
   title: { fontSize: 18, fontWeight: "bold", marginBottom: 12 },
+
   label: { marginTop: 12, marginBottom: 6, fontWeight: "600", color: "#333" },
-  input: { borderWidth: 1, borderColor: "#ccc", borderRadius: 8, padding: 8, marginBottom: 8 },
-  item: { padding: 12, borderBottomWidth: 1, borderBottomColor: "#eee", backgroundColor: "#fafafa" },
+
+  input: { borderWidth: 1, borderRadius: 8, padding: 8, marginBottom: 8 },
+
+  item: { padding: 12, borderWidth: 1, borderRadius: 12, marginBottom: 10 },
+
   itemTitle: { fontWeight: "bold", marginBottom: 4 },
-  itemSmall: { color: "#666", marginTop: 6 },
-  clienteInfo: { fontSize: 13, color: "#2596be", marginBottom: 4 },
-  servicoItem: { padding: 8, borderBottomWidth: 1, borderBottomColor: "#eee", backgroundColor: "#f9f9f9" },
-  statusBtn: { paddingVertical: 6, paddingHorizontal: 8, borderRadius: 6, borderWidth: 1, borderColor: "#ccc", marginRight: 4, marginBottom: 4 },
+
+  itemSmall: { marginTop: 6 },
+
+  clienteInfo: { fontSize: 13, marginBottom: 4 },
+  
+  servicoItem: { padding: 8, borderBottomWidth: 1 },
+
+  statusBtn: { paddingVertical: 6, 
+    paddingHorizontal: 8, borderRadius: 6, 
+    borderWidth: 1, borderColor: "#ccc", 
+    marginRight: 4, marginBottom: 4 },
+
   statusBtnActive: { backgroundColor: "#2596be", borderColor: "#2596be" },
   clienteButton: { 
     borderWidth: 1, 
-    borderColor: "#2596be", 
     borderRadius: 8, 
     padding: 12, 
     marginBottom: 8,
-    backgroundColor: "#f0f8ff"
   },
   clienteButtonText: { 
     color: "#333", 
@@ -373,10 +311,8 @@ const styles = StyleSheet.create({
   },
   clienteListContainer: {
     borderWidth: 1,
-    borderColor: "#2596be",
     borderRadius: 8,
     marginBottom: 12,
-    backgroundColor: "#fff",
     maxHeight: 300
   },
   clienteListItem: {

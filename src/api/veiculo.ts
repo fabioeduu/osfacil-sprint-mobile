@@ -1,6 +1,41 @@
 import { api } from './api';
 import { Veiculo } from '../types';
 
+type VeiculoDTO = {
+  clienteId: number;
+  marca: string;
+  modelo: string;
+  placa: string;
+  ano: number;
+  cor: string;
+};
+
+function toNumber(value: unknown): number {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return 0;
+}
+
+function toVeiculoDTO(payload: Omit<Veiculo, 'id' | 'dataCadastro'>): VeiculoDTO {
+  const clienteId = toNumber(payload.clienteId);
+  const ano = toNumber(payload.ano);
+
+  if (!clienteId) throw new Error('Cliente obrigatorio para salvar veiculo.');
+  if (!ano) throw new Error('Ano obrigatorio para salvar veiculo.');
+
+  return {
+    clienteId,
+    marca: String(payload.marca || '').trim(),
+    modelo: String(payload.modelo || '').trim(),
+    placa: String(payload.placa || '').trim(),
+    ano,
+    cor: String(payload.cor || '').trim(),
+  };
+}
+
 export async function getVeiculos(): Promise<Veiculo[]> {
   const response = await api.get<any>('/veiculos');
   console.log('[veiculo.ts] Response:', JSON.stringify(response.data, null, 2));
@@ -33,8 +68,9 @@ export async function getVeiculo(id: string): Promise<Veiculo> {
 }
 
 export async function postVeiculo(novoVeiculo: Omit<Veiculo, 'id' | 'dataCadastro'>): Promise<Veiculo> {
-  console.log('[veiculo.ts] POST Payload:', JSON.stringify(novoVeiculo));
-  const response = await api.post<Veiculo>('/veiculos', novoVeiculo);
+  const dto = toVeiculoDTO(novoVeiculo);
+  console.log('[veiculo.ts] POST Payload:', JSON.stringify(dto));
+  const response = await api.post<Veiculo>('/veiculos', dto);
   console.log('[veiculo.ts] POST Response:', JSON.stringify(response.data));
   return response.data;
 }
@@ -49,7 +85,8 @@ export async function putVeiculo(params: {
   clienteId: string;
 }): Promise<Veiculo> {
   const { id, ...body } = params;
-  const response = await api.put<Veiculo>(`/veiculos/${id}`, body);
+  const dto = toVeiculoDTO(body as Omit<Veiculo, 'id' | 'dataCadastro'>);
+  const response = await api.put<Veiculo>(`/veiculos/${id}`, dto);
   return response.data;
 }
 

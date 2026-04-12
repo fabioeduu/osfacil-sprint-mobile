@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { View, ActivityIndicator } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Redirect } from 'expo-router';
 let Font: any;
 try {
   Font = require('expo-font');
@@ -18,9 +19,13 @@ try {
 import { Slot } from 'expo-router';
 import FooterNav from '../../components/Footer';
 import Container from '../../components/Container';
+import useAuth from '../../hooks/useAuth';
+import { useAppTheme } from '../../theme';
 
 export default function TabsLayout() {
   const [fontsLoaded, setFontsLoaded] = useState(false);
+  const { isLoading, isAuthenticated } = useAuth();
+  const { colors } = useAppTheme();
 
   useEffect(() => {
     async function loadFonts() {
@@ -32,16 +37,20 @@ export default function TabsLayout() {
     loadFonts();
   }, []);
 
-  if (!fontsLoaded) {
+  if (!fontsLoaded || isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" color="#2596be" />
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: colors.background }}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
+  if (!isAuthenticated) {
+    return <Redirect href="/login" />;
+  }
+
   return (
-    <View style={{ flex: 1, backgroundColor: '#F5F5F5' }}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       <Container>
         <Slot />
       </Container>

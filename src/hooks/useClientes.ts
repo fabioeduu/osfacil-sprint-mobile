@@ -1,68 +1,62 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useMemo } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Cliente } from '../types';
-import { getClientes, postCliente, putCliente, deleteCliente } from '../api/cliente';
+import { ClientePayloadDTO, getClientes, postCliente, putCliente, deleteCliente } from '../api/cliente';
+
+const CLIENTES_QUERY_KEY = ['clientes'];
 
 export function useClientes() {
-  const [clientes, setClientes] = useState<Cliente[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await getClientes();
-      setClientes(Array.isArray(data) ? data.reverse() : []);
-    } catch (err: any) {
-      console.error('Erro ao carregar clientes:', err);
-      setError(err.response?.status === 403 ? 'Acesso negado à API' : 'Erro ao carregar clientes');
-      setClientes([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const clientesQuery = useQuery({
+    queryKey: CLIENTES_QUERY_KEY,
+    queryFn: getClientes,
+    select: (data) => (Array.isArray(data) ? [...data].reverse() : []),
+  });
 
-  const criar = useCallback(async (p: Omit<Cliente, 'id' | 'dataCadastro'>) => {
-    try {
-      const novoCliente = await postCliente(p);
-      await load();
-      return novoCliente;
-    } catch (err: any) {
-      console.error('Erro ao criar cliente:', err);
-      setError('Erro ao criar cliente');
-      throw err;
-    }
-  }, [load]);
+  const criarMutation = useMutation({
+    mutationFn: (payload: ClientePayloadDTO) => postCliente(payload),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: CLIENTES_QUERY_KEY });
+    },
+  });
 
-  const atualizar = useCallback(async (c: Cliente) => {
-    try {
-      await putCliente({
+  const atualizarMutation = useMutation({
+    mutationFn: (c: Cliente) =>
+      putCliente({
         id: c.id,
         nome: c.nome,
+        cpf: c.cpf || '',
         email: c.email,
+        senha: c.senha || '',
         telefone: c.telefone,
         endereco: c.endereco,
-      });
-      await load();
-    } catch (err: any) {
-      console.error('Erro ao atualizar cliente:', err);
-      setError('Erro ao atualizar cliente');
-      throw err;
-    }
-  }, [load]);
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: CLIENTES_QUERY_KEY });
+    },
+  });
 
-  const remover = useCallback(async (id: string) => {
-    try {
-      await deleteCliente(id);
-      await load();
-    } catch (err: any) {
-      console.error('Erro ao remover cliente:', err);
-      setError('Erro ao remover cliente');
-      throw err;
-    }
-  }, [load]);
+  const removerMutation = useMutation({
+    mutationFn: (id: string) => deleteCliente(id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: CLIENTES_QUERY_KEY });
+    },
+  });
 
-  useEffect(() => { load(); }, [load]);
+  const error = useMemo(() => {
+    if (!clientesQuery.error) return null;
+    return 'Erro ao carregar clientes';
+  }, [clientesQuery.error]);
 
-  return { clientes, loading, error, load, criar, atualizar, remover };
+  return {
+    clientes: clientesQuery.data ?? [],
+    loading: clientesQuery.isLoading,
+    error,
+    load: clientesQuery.refetch,
+    criar: criarMutation.mutateAsync,
+    atualizar: atualizarMutation.mutateAsync,
+    remover: removerMutation.mutateAsync,
+    saving: criarMutation.isPending || atualizarMutation.isPending || removerMutation.isPending,
+  };
 }

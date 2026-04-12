@@ -1,14 +1,16 @@
-import React, { useCallback, useState, useEffect } from 'react';
-import { View, Text, TextInput, Button, FlatList, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
+import { useState, useEffect } from 'react';
+import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, Alert, ScrollView, ActivityIndicator } from 'react-native';
 import Container from './Container';
 import { useVeiculos, useClientes } from '../hooks';
 import { Veiculo as VeiculoType, Cliente } from '../types';
 import { useLocalSearchParams } from 'expo-router';
+import { useAppTheme } from '../theme';
 
 export default function Veiculo() {
+  const { colors } = useAppTheme();
   const [mode, setMode] = useState<'listar' | 'criar' | 'editar'>('listar');
-  const { veiculos, loading: loadingVeiculos, load: loadVeiculos, criar, atualizar, remover } = useVeiculos();
-  const { clientes, loading: loadingClientes } = useClientes();
+  const { veiculos, loading: loadingVeiculos, criar, atualizar, remover } = useVeiculos();
+  const { clientes } = useClientes();
 
   const [clienteId, setClienteId] = useState<string>('');
   const [marca, setMarca] = useState('');
@@ -28,6 +30,31 @@ export default function Veiculo() {
     }
   }, [paramClienteId]);
 
+  const resetForm = (preserveCliente = false) => {
+    setMarca('');
+    setModelo('');
+    setPlaca('');
+    setAno('');
+    setCor('');
+    setSelected(null);
+    if (!preserveCliente) {
+      setClienteId('');
+    }
+  };
+
+  const getApiErrorMessage = (e: any, fallback: string) => {
+    if (e?.response?.status === 403) {
+      return 'Sem permissao para salvar veiculo (403). Faça login com perfil autorizado.';
+    }
+
+    return (
+      e?.response?.data?.message ||
+      e?.response?.data?.error ||
+      e?.message ||
+      fallback
+    );
+  };
+
 
   const salvarNovo = async () => {
     try {
@@ -37,11 +64,11 @@ export default function Veiculo() {
       }
       await criar({ clienteId, marca, modelo, placa, ano, cor });
       Alert.alert('Sucesso', 'Veículo criado');
-      setMarca(''); setModelo(''); setPlaca(''); setAno(''); setCor(''); setClienteId('');
+      resetForm();
       setMode('listar');
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      Alert.alert('Erro', 'Não foi possível salvar o veículo');
+      Alert.alert('Erro', String(getApiErrorMessage(e, 'Não foi possível salvar o veículo')));
     }
   };
 
@@ -62,14 +89,18 @@ export default function Veiculo() {
   const salvarEdicao = async () => {
     if (!selected) return;
     try {
+      if (!clienteId || !marca.trim() || !placa.trim()) {
+        Alert.alert('Erro', 'Cliente, marca e placa são obrigatórios');
+        return;
+      }
       const updated: VeiculoType = { ...selected, clienteId, marca, modelo, placa, ano, cor };
       await atualizar(updated);
       Alert.alert('Sucesso', 'Veículo atualizado');
-      setSelected(null);
+      resetForm();
       setMode('listar');
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      Alert.alert('Erro', 'Não foi possível atualizar o veículo');
+      Alert.alert('Erro', String(getApiErrorMessage(e, 'Não foi possível atualizar o veículo')));
     }
   };
 
@@ -87,31 +118,37 @@ export default function Veiculo() {
 
   return (
     <Container>
-      <View style={styles.tabs}>
-        <TouchableOpacity style={[styles.tab, mode === 'listar' && styles.tabActive]} onPress={() => setMode('listar')}>
-          <Text style={[styles.tabText, mode === 'listar' && styles.tabTextActive]}>Listar</Text>
+      <View style={[styles.tabs, { borderColor: colors.border }]}> 
+        <TouchableOpacity style={[styles.tab, mode === 'listar' && { borderColor: colors.primary, borderBottomWidth: 2 }]} onPress={() => setMode('listar')}>
+          <Text style={[styles.tabText, { color: colors.textMuted }, mode === 'listar' && { color: colors.primary, fontWeight: '700' }]}>Listar</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.tab, mode === 'criar' && styles.tabActive]} onPress={() => { setMode('criar'); setSelected(null); }}>
-          <Text style={[styles.tabText, mode === 'criar' && styles.tabTextActive]}>Criar</Text>
+        <TouchableOpacity style={[styles.tab, mode === 'criar' && { borderColor: colors.primary, borderBottomWidth: 2 }]} onPress={() => { setMode('criar'); resetForm(Boolean(paramClienteId)); }}>
+          <Text style={[styles.tabText, { color: colors.textMuted }, mode === 'criar' && { color: colors.primary, fontWeight: '700' }]}>Criar</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.tab, mode === 'editar' && styles.tabActive]} onPress={() => setMode('editar')}>
-          <Text style={[styles.tabText, mode === 'editar' && styles.tabTextActive]}>Editar</Text>
+        <TouchableOpacity style={[styles.tab, mode === 'editar' && { borderColor: colors.primary, borderBottomWidth: 2 }]} onPress={() => setMode('editar')}>
+          <Text style={[styles.tabText, { color: colors.textMuted }, mode === 'editar' && { color: colors.primary, fontWeight: '700' }]}>Editar</Text>
         </TouchableOpacity>
       </View>
 
       {mode === 'listar' && (
         <View style={{ flex: 1 }}>
-          <Text style={styles.title}>Veículos</Text>
+          <Text style={[styles.title, { color: colors.text }]}>Veiculos</Text>
+          {loadingVeiculos ? <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 16 }} /> : null}
           <FlatList
             data={veiculos}
             keyExtractor={(v) => v.id}
+            ListEmptyComponent={!loadingVeiculos ? <Text style={{ marginTop: 18, color: colors.textMuted }}>Nenhum veiculo cadastrado</Text> : null}
             renderItem={({ item }) => (
-              <View style={styles.item}>
-                <Text style={styles.itemTitle}>{item.marca} {item.modelo} — {item.placa}</Text>
-                <Text style={styles.itemSmall}>Cliente: {clientes.find(c => c.id === item.clienteId)?.nome || '—'}</Text>
+              <View style={[styles.item, { backgroundColor: colors.surface, borderColor: colors.border }]}> 
+                <Text style={[styles.itemTitle, { color: colors.text }]}>{item.marca} {item.modelo} - {item.placa}</Text>
+                <Text style={[styles.itemSmall, { color: colors.textMuted }]}>Cliente: {clientes.find(c => c.id === item.clienteId)?.nome || '-'}</Text>
                 <View style={{ flexDirection: 'row', marginTop: 8, gap: 8 }}>
-                  <Button title="Editar" onPress={() => abrirEditar(item.id)} />
-                  <Button color="#d9534f" title="Excluir" onPress={() => handleDelete(item.id)} />
+                  <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.primarySoft }]} onPress={() => abrirEditar(item.id)}>
+                    <Text style={[styles.actionText, { color: colors.primary }]}>Editar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.danger }]} onPress={() => handleDelete(item.id)}>
+                    <Text style={[styles.actionText, { color: '#fff' }]}>Excluir</Text>
+                  </TouchableOpacity>
                 </View>
               </View>
             )}
@@ -121,51 +158,47 @@ export default function Veiculo() {
 
       {(mode === 'criar' || mode === 'editar') && (
         <ScrollView style={{ flex: 1 }}>
-          <Text style={styles.title}>{mode === 'criar' ? 'Novo Veículo' : `Editar Veículo`}</Text>
+          <Text style={[styles.title, { color: colors.text }]}>{mode === 'criar' ? 'Novo Veiculo' : `Editar Veiculo`}</Text>
 
-          <Text style={styles.label}>Cliente *</Text>
-          <TouchableOpacity style={styles.clienteButton} onPress={() => setShowClienteList(!showClienteList)}>
-            <Text style={styles.clienteButtonText}>{clientes.find(c => c.id === clienteId)?.nome || 'Selecione um cliente'}</Text>
+          <Text style={[styles.label, { color: colors.textMuted }]}>Cliente *</Text>
+          <TouchableOpacity style={[styles.clienteButton, { borderColor: colors.border, backgroundColor: colors.surface }]} onPress={() => setShowClienteList(!showClienteList)}>
+            <Text style={[styles.clienteButtonText, { color: colors.text }]}>{clientes.find(c => c.id === clienteId)?.nome || 'Selecione um cliente'}</Text>
           </TouchableOpacity>
 
           {showClienteList && (
-            <View style={styles.clienteListContainer}>
+            <View style={[styles.clienteListContainer, { borderColor: colors.border, backgroundColor: colors.surface }]}> 
               <FlatList
                 data={clientes}
                 keyExtractor={c => c.id}
                 scrollEnabled={false}
                 renderItem={({ item }) => (
-                  <TouchableOpacity style={styles.clienteListItem} onPress={() => selecionarCliente(item)}>
-                    <Text style={styles.clienteListItemText}>{item.nome}</Text>
-                    {item.telefone ? <Text style={styles.clienteListItemPhone}>{item.telefone}</Text> : null}
+                  <TouchableOpacity style={[styles.clienteListItem, { borderBottomColor: colors.border }]} onPress={() => selecionarCliente(item)}>
+                    <Text style={[styles.clienteListItemText, { color: colors.text }]}>{item.nome}</Text>
+                    {item.telefone ? <Text style={[styles.clienteListItemPhone, { color: colors.textMuted }]}>{item.telefone}</Text> : null}
                   </TouchableOpacity>
                 )}
               />
             </View>
           )}
 
-          <Text style={styles.label}>Marca *</Text>
-          <TextInput value={marca} onChangeText={setMarca} style={styles.input} />
+          <Text style={[styles.label, { color: colors.textMuted }]}>Marca *</Text>
+          <TextInput value={marca} onChangeText={setMarca} style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]} />
 
-          <Text style={styles.label}>Modelo</Text>
-          <TextInput value={modelo} onChangeText={setModelo} style={styles.input} />
+          <Text style={[styles.label, { color: colors.textMuted }]}>Modelo</Text>
+          <TextInput value={modelo} onChangeText={setModelo} style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]} />
 
-          <Text style={styles.label}>Placa *</Text>
-          <TextInput value={placa} onChangeText={setPlaca} style={styles.input} />
+          <Text style={[styles.label, { color: colors.textMuted }]}>Placa *</Text>
+          <TextInput value={placa} onChangeText={setPlaca} style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]} />
 
-          <Text style={styles.label}>Ano</Text>
-          <TextInput value={ano} onChangeText={setAno} style={styles.input} keyboardType="numeric" />
+          <Text style={[styles.label, { color: colors.textMuted }]}>Ano</Text>
+          <TextInput value={ano} onChangeText={setAno} style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]} keyboardType="numeric" />
 
-          <Text style={styles.label}>Cor</Text>
-          <TextInput value={cor} onChangeText={setCor} style={styles.input} />
+          <Text style={[styles.label, { color: colors.textMuted }]}>Cor</Text>
+          <TextInput value={cor} onChangeText={setCor} style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]} />
 
-          <View style={{ marginTop: 12, marginBottom: 20 }}>
-            {mode === 'criar' ? (
-              <Button title="Salvar Veículo" onPress={salvarNovo} />
-            ) : (
-              <Button title="Salvar Alterações" onPress={salvarEdicao} />
-            )}
-          </View>
+          <TouchableOpacity style={[styles.primaryButton, { backgroundColor: colors.primary, marginBottom: 20 }]} onPress={mode === 'criar' ? salvarNovo : salvarEdicao}>
+            <Text style={styles.primaryButtonText}>{mode === 'criar' ? 'Salvar Veiculo' : 'Salvar Alteracoes'}</Text>
+          </TouchableOpacity>
         </ScrollView>
       )}
     </Container>
@@ -177,17 +210,20 @@ const styles = StyleSheet.create({
   tab: { flex: 1, paddingVertical: 10, alignItems: 'center' },
   tabActive: { borderBottomWidth: 2, borderColor: '#2596be' },
   tabText: { fontSize: 14, color: '#666' },
-  tabTextActive: { color: '#2596be', fontWeight: 'bold' },
   title: { fontSize: 18, fontWeight: 'bold', marginBottom: 12 },
   label: { marginTop: 12, marginBottom: 6, fontWeight: '600', color: '#333' },
-  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 8, marginBottom: 8 },
-  item: { padding: 12, borderBottomWidth: 1, borderBottomColor: '#eee' },
+  input: { borderWidth: 1, borderRadius: 10, padding: 10, marginBottom: 8 },
+  item: { padding: 12, borderWidth: 1, borderRadius: 12, marginBottom: 10 },
   itemTitle: { fontWeight: 'bold', marginBottom: 4 },
-  itemSmall: { color: '#666', marginTop: 4 },
-  clienteButton: { borderWidth: 1, borderColor: '#2596be', borderRadius: 8, padding: 12, marginBottom: 8, backgroundColor: '#f0f8ff' },
-  clienteButtonText: { color: '#333', fontSize: 14, fontWeight: '500' },
-  clienteListContainer: { borderWidth: 1, borderColor: '#2596be', borderRadius: 8, marginBottom: 12, backgroundColor: '#fff', maxHeight: 300 },
+  itemSmall: { marginTop: 4 },
+  clienteButton: { borderWidth: 1, borderRadius: 10, padding: 12, marginBottom: 8 },
+  clienteButtonText: { fontSize: 14, fontWeight: '500' },
+  clienteListContainer: { borderWidth: 1, borderRadius: 10, marginBottom: 12, maxHeight: 300 },
   clienteListItem: { padding: 12, borderBottomWidth: 1, borderBottomColor: '#eee' },
-  clienteListItemText: { fontSize: 14, fontWeight: '500', color: '#333' },
-  clienteListItemPhone: { fontSize: 12, color: '#999', marginTop: 2 }
+  clienteListItemText: { fontSize: 14, fontWeight: '500' },
+  clienteListItemPhone: { fontSize: 12, marginTop: 2 },
+  actionButton: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10 },
+  actionText: { fontSize: 12, fontWeight: '700' },
+  primaryButton: { paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
+  primaryButtonText: { color: '#fff', fontWeight: '700' }
 });

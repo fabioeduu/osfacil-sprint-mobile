@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, Alert, KeyboardAvoidingView, Platform, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { register as registerAPI } from '../api/auth';
+import { useAppTheme } from '../theme';
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { colors } = useAppTheme();
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -85,19 +86,19 @@ export default function RegisterPage() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, justifyContent: 'center' }}>
-        <View style={styles.inner}>
+        <View style={[styles.inner, { backgroundColor: colors.surface, borderColor: colors.border }] }>
 
-          <Text style={styles.title}>Cadastre-se</Text>
+          <Text style={[styles.title, { color: colors.text }]}>Criar conta</Text>
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
           <TextInput
             placeholder="Nome"
-            placeholderTextColor="#666"
+            placeholderTextColor={colors.textMuted}
             value={nome}
             onChangeText={setNome}
-            style={styles.input}
+            style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surfaceAlt }]}
             keyboardType="default"
             autoCapitalize="words"
           />
@@ -105,10 +106,10 @@ export default function RegisterPage() {
 
           <TextInput
             placeholder="CPF"
-            placeholderTextColor="#666"
+            placeholderTextColor={colors.textMuted}
             value={cpf}
             onChangeText={(text) => setCpf(formatCpf(text))}
-            style={styles.input}
+            style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surfaceAlt }]}
             keyboardType="numeric"
             autoCapitalize="none"
             maxLength={14}
@@ -117,10 +118,10 @@ export default function RegisterPage() {
 
           <TextInput
             placeholder="Telefone"
-            placeholderTextColor="#666"
+            placeholderTextColor={colors.textMuted}
             value={telefone}
             onChangeText={(text) => setTelefone(formatTelefone(text))}
-            style={styles.input}
+            style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surfaceAlt }]}
             keyboardType="phone-pad"
             autoCapitalize="none"
             maxLength={16}
@@ -129,10 +130,10 @@ export default function RegisterPage() {
 
           <TextInput
             placeholder="Endereço"
-            placeholderTextColor="#666"
+            placeholderTextColor={colors.textMuted}
             value={endereco}
             onChangeText={setEndereco}
-            style={styles.input}
+            style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surfaceAlt }]}
             keyboardType="default"
             autoCapitalize="words"
           />
@@ -140,42 +141,42 @@ export default function RegisterPage() {
 
           <TextInput
             placeholder="Email"
-            placeholderTextColor="#666"
+            placeholderTextColor={colors.textMuted}
             value={email}
             onChangeText={setEmail}
-            style={styles.input}
+            style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surfaceAlt }]}
             keyboardType="email-address"
             autoCapitalize="none"
           />
 
           <TextInput
             placeholder="Senha"
-            placeholderTextColor="#666"
+            placeholderTextColor={colors.textMuted}
             value={senha}
             onChangeText={setSenha}
-            style={styles.input}
+            style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surfaceAlt }]}
             secureTextEntry
           />
 
           <TextInput
             placeholder="Confirmar senha"
-            placeholderTextColor="#666"
+            placeholderTextColor={colors.textMuted}
             value={confirm}
             onChangeText={setConfirm}
-            style={styles.input}
+            style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surfaceAlt }]}
             secureTextEntry
           />
 
           <TouchableOpacity
-            style={[styles.primaryButton, loading ? styles.primaryButtonDisabled : null]}
+            style={[styles.primaryButton, { backgroundColor: colors.primary }, loading ? styles.primaryButtonDisabled : null]}
             onPress={handleRegister}
             disabled={loading}
           >
             {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>Cadastrar</Text>}
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.secondaryButton} onPress={() => router.replace('/login')}>
-            <Text style={styles.secondaryButtonText}>Voltar para login</Text>
+          <TouchableOpacity style={[styles.secondaryButton, { borderColor: colors.primarySoft, backgroundColor: colors.primarySoft }]} onPress={() => router.replace('/login')}>
+            <Text style={[styles.secondaryButtonText, { color: colors.primary }]}>Voltar para login</Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -184,14 +185,14 @@ export default function RegisterPage() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, justifyContent: 'center', backgroundColor: '#F5F5F5' },
-  inner: { width: '100%', maxWidth: 520, alignSelf: 'center' },
-  title: { fontSize: 20, fontWeight: '700', marginBottom: 16, textAlign: 'center', color: '#222' },
-  input: { borderWidth: 1, borderColor: '#ccc', padding: 10, borderRadius: 8, marginBottom: 12, backgroundColor: '#fff', color: '#222' },
-  primaryButton: { backgroundColor: '#6BC0A9', paddingVertical: 12, borderRadius: 8, alignItems: 'center', marginTop: 8 },
+  container: { flex: 1, padding: 20, justifyContent: 'center' },
+  inner: { width: '100%', maxWidth: 520, alignSelf: 'center', borderWidth: 1, borderRadius: 20, padding: 20 },
+  title: { fontSize: 22, fontWeight: '800', marginBottom: 16, textAlign: 'center' },
+  input: { borderWidth: 1, padding: 12, borderRadius: 12, marginBottom: 12 },
+  primaryButton: { paddingVertical: 12, borderRadius: 12, alignItems: 'center', marginTop: 8 },
   primaryButtonDisabled: { opacity: 0.6 },
   errorText: { color: '#c0392b', textAlign: 'center', marginBottom: 8 },
   primaryButtonText: { color: '#fff', fontWeight: '700' },
-  secondaryButton: { borderWidth: 1, borderColor: '#6BC0A9', paddingVertical: 10, borderRadius: 8, alignItems: 'center', marginTop: 10, backgroundColor: '#fff' },
-  secondaryButtonText: { color: '#6BC0A9', fontWeight: '600' }
+  secondaryButton: { borderWidth: 1, paddingVertical: 10, borderRadius: 12, alignItems: 'center', marginTop: 10 },
+  secondaryButtonText: { fontWeight: '700' }
 });

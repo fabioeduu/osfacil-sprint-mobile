@@ -1,10 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, usePathname } from 'expo-router';
-import * as React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useAppTheme } from '../theme';
 
 export default function FooterNav() {
   const pathname = usePathname() ?? '';
+  const { colors } = useAppTheme();
 
   const tabs = [
     { name: 'Início', icon: 'home-outline', route: '/(tabs)/home' },
@@ -15,7 +16,7 @@ export default function FooterNav() {
   ];
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.surface, borderColor: colors.border }]}> 
       {tabs.map((tab) => {
         const routeName = tab.route.split('/').pop() || '';
         const isActive = pathname.includes(routeName);
@@ -29,10 +30,10 @@ export default function FooterNav() {
           >
             <Ionicons
               name={tab.icon as any}
-              size={24}
-              color={isActive ? '#6bc0a9' : '#fff'}
+              size={20}
+              color={isActive ? colors.primary : colors.textMuted}
             />
-            <Text style={[styles.text, isActive && styles.activeText]}>
+            <Text style={[styles.text, { color: colors.textMuted }, isActive && { color: colors.primary, fontWeight: '700' }]}>
               {tab.name}
             </Text>
           </TouchableOpacity>
@@ -48,25 +49,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     alignItems: 'center',
     borderTopWidth: 1,
-    borderColor: '#ddd',
     paddingVertical: 6,
-    backgroundColor: '#0d1b5cff',
   },
   tab: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 6,
+    paddingVertical: 8,
     paddingHorizontal: 12,
-    borderRadius: 16,
+    borderRadius: 12,
   },
   text: {
-    fontSize: 12,
-    color: '#fff',
+    fontSize: 11,
     marginTop: 3,
-  },
-  activeText: {
-    color: '#6bc0a9',
-    fontWeight: 'bold',
   },
 });
         

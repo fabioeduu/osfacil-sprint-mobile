@@ -1,10 +1,12 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { View, Text, TextInput, Button, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
 import Container from '../../components/Container';
 import { useOrdens } from '../../hooks';
 import { useRouter } from 'expo-router';
+import { useAppTheme } from '../../theme';
 
 export default function BuscaPage() {
+  const { colors } = useAppTheme();
 	const [query, setQuery] = useState('');
 	const { ordens } = useOrdens();
 	const router = useRouter();
@@ -24,24 +26,24 @@ export default function BuscaPage() {
 
 	return (
 		<Container>
-			<Text style={styles.title}>Buscar Ordens</Text>
+			<Text style={[styles.title, { color: colors.text }]}>Buscar Ordens</Text>
 
 			<View style={styles.searchRow}>
-				<TextInput placeholder="Número, defeito ou status" value={query} onChangeText={setQuery} style={styles.input} />
+				<TextInput placeholder="Numero, defeito ou status" placeholderTextColor={colors.textMuted} value={query} onChangeText={setQuery} style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]} />
 				<Button title="Limpar" onPress={() => setQuery('')} />
 			</View>
 
 			<FlatList
 				data={results}
 				keyExtractor={i => i.id}
-				ListEmptyComponent={<Text style={{ marginTop: 16 }}>Nenhum resultado</Text>}
+				ListEmptyComponent={<Text style={{ marginTop: 16, color: colors.textMuted }}>Nenhum resultado</Text>}
 			renderItem={({ item }) => (
-				<TouchableOpacity style={styles.item} onPress={() => {
+				<TouchableOpacity style={[styles.item, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => {
 					router.push(`/(tabs)/ordem?id=${item.id}`);
 				}}>
-						<Text style={styles.itemTitle}>Ordem #{item.numero} — {item.status}</Text>
-						<Text numberOfLines={2}>{item.defeito}</Text>
-						<Text style={styles.itemSmall}>R$ {Number(item.valorTotal).toFixed(2)}</Text>
+						<Text style={[styles.itemTitle, { color: colors.text }]}>Ordem #{item.numero} - {item.status}</Text>
+						<Text numberOfLines={2} style={{ color: colors.text }}>{item.defeito}</Text>
+						<Text style={[styles.itemSmall, { color: colors.textMuted }]}>R$ {Number(item.valorTotal).toFixed(2)}</Text>
 					</TouchableOpacity>
 				)}
 			/>
@@ -52,8 +54,8 @@ export default function BuscaPage() {
 const styles = StyleSheet.create({
 	title: { fontSize: 18, fontWeight: 'bold', marginBottom: 12 },
 	searchRow: { flexDirection: 'row', gap: 8, alignItems: 'center', marginBottom: 8 },
-	input: { flex: 1, borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 8, marginRight: 8 },
-	item: { padding: 12, borderBottomWidth: 1, borderBottomColor: '#eee' },
+	input: { flex: 1, borderWidth: 1, borderRadius: 8, padding: 8, marginRight: 8 },
+	item: { padding: 12, borderWidth: 1, borderRadius: 10, marginBottom: 8 },
 	itemTitle: { fontWeight: 'bold' },
-	itemSmall: { color: '#666', marginTop: 6 }
+	itemSmall: { marginTop: 6 }
 });

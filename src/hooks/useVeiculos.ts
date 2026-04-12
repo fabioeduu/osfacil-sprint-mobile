@@ -1,42 +1,29 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useMemo } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Veiculo } from '../types';
 import { getVeiculos, postVeiculo, putVeiculo, deleteVeiculo } from '../api/veiculo';
 
+const VEICULOS_QUERY_KEY = ['veiculos'];
+
 export function useVeiculos() {
-  const [veiculos, setVeiculos] = useState<Veiculo[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await getVeiculos();
-      setVeiculos(Array.isArray(data) ? data.reverse() : []);
-    } catch (err: any) {
-      console.error('Erro ao carregar veículos:', err);
-      setError(err.response?.status === 403 ? 'Acesso negado à API' : 'Erro ao carregar veículos');
-      setVeiculos([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const veiculosQuery = useQuery({
+    queryKey: VEICULOS_QUERY_KEY,
+    queryFn: getVeiculos,
+    select: (data) => (Array.isArray(data) ? [...data].reverse() : []),
+  });
 
-  const criar = useCallback(async (p: Omit<Veiculo, 'id' | 'dataCadastro'>) => {
-    try {
-      const novoVeiculo = await postVeiculo(p);
-      await load();
-      return novoVeiculo;
-    } catch (err: any) {
-      console.error('Erro ao criar veículo:', err);
-      setError('Erro ao criar veículo');
-      throw err;
-    }
-  }, [load]);
+  const criarMutation = useMutation({
+    mutationFn: (payload: Omit<Veiculo, 'id' | 'dataCadastro'>) => postVeiculo(payload),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: VEICULOS_QUERY_KEY });
+    },
+  });
 
-  const atualizar = useCallback(async (v: Veiculo) => {
-    try {
-      await putVeiculo({
+  const atualizarMutation = useMutation({
+    mutationFn: (v: Veiculo) =>
+      putVeiculo({
         id: v.id,
         marca: v.marca,
         modelo: v.modelo,
@@ -44,27 +31,32 @@ export function useVeiculos() {
         ano: v.ano,
         cor: v.cor,
         clienteId: v.clienteId,
-      });
-      await load();
-    } catch (err: any) {
-      console.error('Erro ao atualizar veículo:', err);
-      setError('Erro ao atualizar veículo');
-      throw err;
-    }
-  }, [load]);
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: VEICULOS_QUERY_KEY });
+    },
+  });
 
-  const remover = useCallback(async (id: string) => {
-    try {
-      await deleteVeiculo(id);
-      await load();
-    } catch (err: any) {
-      console.error('Erro ao remover veículo:', err);
-      setError('Erro ao remover veículo');
-      throw err;
-    }
-  }, [load]);
+  const removerMutation = useMutation({
+    mutationFn: (id: string) => deleteVeiculo(id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: VEICULOS_QUERY_KEY });
+    },
+  });
 
-  useEffect(() => { load(); }, [load]);
+  const error = useMemo(() => {
+    if (!veiculosQuery.error) return null;
+    return 'Erro ao carregar veículos';
+  }, [veiculosQuery.error]);
 
-  return { veiculos, loading, error, load, criar, atualizar, remover };
+  return {
+    veiculos: veiculosQuery.data ?? [],
+    loading: veiculosQuery.isLoading,
+    error,
+    load: veiculosQuery.refetch,
+    criar: criarMutation.mutateAsync,
+    atualizar: atualizarMutation.mutateAsync,
+    remover: removerMutation.mutateAsync,
+    saving: criarMutation.isPending || atualizarMutation.isPending || removerMutation.isPending,
+  };
 }
