@@ -300,11 +300,11 @@ START
 5. Abra um Pull Request
 
 ## Link do YouTube: 
-  - https://youtube.com/shorts/AWg-onc7FKE?feature=share 
+  - https://youtube.com/shorts/n2uNzI5LF8M 
 
-## video do projeto:
+## video do projeto: https://youtube.com/shorts/n2uNzI5LF8M
 
-[![Assista ao vídeo](https://img.youtube.com/vi/AWg-onc7FKE/0.jpg)](https://youtu.be/AWg-onc7FKE)
+[![Assista ao vídeo](https://www.youtube.com/shorts/n2uNzI5LF8M)]
 
 
 ## Autores do projeto:
