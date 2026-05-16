@@ -27,10 +27,10 @@ export function useClientes() {
         id: c.id,
         nome: c.nome,
         cpf: c.cpf || '',
-        email: c.email,
+        email: c.email || '',
         senha: c.senha || '',
-        telefone: c.telefone,
-        endereco: c.endereco,
+        telefone: c.telefone || '',
+        endereco: c.endereco || '',
       }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: CLIENTES_QUERY_KEY });
