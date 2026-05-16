@@ -69,10 +69,14 @@ export async function getVeiculo(id: string): Promise<Veiculo> {
 
 export async function postVeiculo(novoVeiculo: Omit<Veiculo, 'id' | 'dataCadastro'>): Promise<Veiculo> {
   const dto = toVeiculoDTO(novoVeiculo);
-  console.log('[veiculo.ts] POST Payload:', JSON.stringify(dto));
-  const response = await api.post<Veiculo>('/veiculos', dto);
-  console.log('[veiculo.ts] POST Response:', JSON.stringify(response.data));
-  return response.data;
+  
+  try {
+    const response = await api.post<Veiculo>('/veiculos', dto);
+    return response.data;
+  } catch (error: any) {
+    console.error('[veiculo.ts] Erro ao criar veículo:', error?.response?.data?.message || error?.message);
+    throw error;
+  }
 }
 
 export async function putVeiculo(params: {

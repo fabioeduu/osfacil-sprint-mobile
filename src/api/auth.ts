@@ -28,3 +28,16 @@ export interface RegisterDTO {
 export async function register(dados: RegisterDTO): Promise<void> {
   await api.post('/register', dados);
 }
+
+export interface RegisterFuncionarioDTO {
+  email: string;
+  password: string;
+  nome: string;
+  cpf: string;
+  salario: number;
+  login: string;
+}
+
+export async function registerFuncionario(dados: RegisterFuncionarioDTO): Promise<void> {
+  await api.post('/register-funcionario', dados);
+}

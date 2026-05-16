@@ -43,9 +43,18 @@ export async function getCliente(id: string): Promise<Cliente> {
 
 export async function postCliente(novoCliente: ClientePayloadDTO): Promise<Cliente> {
   console.log('[cliente.ts] POST Payload:', JSON.stringify(novoCliente));
-  const response = await api.post<Cliente>('/clientes', novoCliente);
-  console.log('[cliente.ts] POST Response:', JSON.stringify(response.data));
-  return response.data;
+  try {
+    const response = await api.post<Cliente>('/clientes', novoCliente);
+    console.log('[cliente.ts] POST Response:', JSON.stringify(response.data));
+    return response.data;
+  } catch (error: any) {
+    if (error?.response?.status === 403) {
+      const backendMessage = error?.response?.data?.message || error?.response?.data?.error;
+      throw new Error(backendMessage || 'Sem permissão para criar cliente. Faça login com um perfil autorizado.');
+    }
+
+    throw error;
+  }
 }
 
 export async function putCliente(params: {

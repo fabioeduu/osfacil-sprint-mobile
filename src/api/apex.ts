@@ -3,7 +3,7 @@ import { api } from './api';
 
 const apexApi = axios.create({
   baseURL: 'https://oracleapex.com/ords/osfacill',
-  timeout: 50000,
+  timeout: 60000,
 });
 
 export type ApexOrdemStatusItem = {

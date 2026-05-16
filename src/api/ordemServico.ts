@@ -13,6 +13,25 @@ type ApiStatusOrdem = 'ABERTA' | 'EM_ANDAMENTO' | 'CONCLUIDA' | 'CANCELADA';
 
 type RawOrdem = Record<string, unknown>;
 
+function pickString(source: Record<string, unknown> | undefined, keys: string[]): string | undefined {
+  if (!source) return undefined;
+  for (const key of keys) {
+    const value = source[key];
+    if (typeof value === 'string' && value.trim()) return value.trim();
+  }
+  return undefined;
+}
+
+function getNestedNumber(source: Record<string, unknown> | undefined, keys: string[]): number {
+  if (!source) return 0;
+  for (const key of keys) {
+    const value = source[key];
+    const parsed = toNumber(value);
+    if (parsed > 0) return parsed;
+  }
+  return 0;
+}
+
 function toNumber(value: unknown): number {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
   if (typeof value === 'string') {
@@ -43,28 +62,104 @@ function toApiStatusOrdem(value: StatusOrdem | undefined): ApiStatusOrdem {
 }
 
 function normalizeOrdem(item: RawOrdem): OrdemServico {
+  const clienteObj = (item as any)?.cliente as Record<string, unknown> | undefined;
+  const funcionarioObj = (item as any)?.funcionario as Record<string, unknown> | undefined;
+  const servicosRaw = Array.isArray(item.servicos) ? (item.servicos as Record<string, unknown>[]) : [];
+  const servicoComFuncionario = servicosRaw.find((s) =>
+    !!pickString(s, ['funcionarioNome', 'nomeFuncionario', 'funcionarioEmail', 'emailFuncionario', 'responsavelNome', 'responsavelEmail'])
+  );
+  const ownerObj =
+    ((item as any)?.owner as Record<string, unknown> | undefined) ||
+    ((item as any)?.responsavel as Record<string, unknown> | undefined) ||
+    ((item as any)?.usuario as Record<string, unknown> | undefined);
+  const ownerText = typeof (item as any)?.owner === 'string' ? String((item as any).owner).trim() : undefined;
+  const funcionarioText = typeof (item as any)?.funcionario === 'string' ? String((item as any).funcionario).trim() : undefined;
   const idNumber = toNumber(item.id);
   const numero = toNumber(item.numero) || idNumber || Date.now();
-  const clienteId = toNumber(item.clienteId ?? (item as any)?.cliente?.id);
+  const clienteId =
+    toNumber(item.clienteId) ||
+    getNestedNumber(clienteObj, ['id', 'idCliente', 'clienteId']);
+  const funcionarioId =
+    toNumber(item.funcionarioId ?? item.idFuncionario ?? item.ownerId ?? item.funcionario ?? item.responsavel ?? item.usuario) ||
+    getNestedNumber(funcionarioObj, ['id', 'idFuncionario', 'funcionarioId']) ||
+    getNestedNumber(ownerObj, ['id', 'idUsuario', 'ownerId']);
   const valor = toNumber(item.valor ?? item.valorTotal);
 
   const descricao = String(item.descricao ?? item.defeito ?? item.observacoes ?? '').trim();
   const statusRaw = item.statusOrdemServico ?? item.status;
   const status = toStatusOrdem(statusRaw);
+  const ownerTextLooksEmail = ownerText && ownerText.includes('@') ? ownerText : undefined;
+  const funcionarioTextLooksEmail = funcionarioText && funcionarioText.includes('@') ? funcionarioText : undefined;
+  const responsavelFallback = funcionarioId ? `Funcionário #${funcionarioId}` : undefined;
+  const funcionarioEmail =
+    pickString(item, [
+      'funcionarioEmail',
+      'emailFuncionario',
+      'funcionario_email',
+      'FUNCIONARIO_EMAIL',
+      'EMAIL_FUNCIONARIO',
+      'ownerEmail',
+      'owner_email',
+      'OWNER_EMAIL',
+      'responsavelEmail',
+      'responsavel_email',
+      'RESPONSAVEL_EMAIL',
+      'emailResponsavel',
+      'usuarioEmail',
+      'USUARIO_EMAIL',
+    ]) ||
+    pickString(servicoComFuncionario, ['funcionarioEmail', 'emailFuncionario', 'responsavelEmail']) ||
+    pickString(funcionarioObj, ['email', 'mail', 'emailFuncionario']) ||
+    pickString(ownerObj, ['email', 'mail', 'username', 'login']) ||
+    ownerTextLooksEmail ||
+    funcionarioTextLooksEmail ||
+    undefined;
+
+  const funcionarioNome =
+    pickString(item, [
+      'funcionarioNome',
+      'nomeFuncionario',
+      'funcionario_nome',
+      'FUNCIONARIO_NOME',
+      'NOME_FUNCIONARIO',
+      'ownerName',
+      'owner_name',
+      'OWNER_NAME',
+      'nomeResponsavel',
+      'responsavelNome',
+      'responsavel_nome',
+      'RESPONSAVEL_NOME',
+      'usuarioNome',
+      'USUARIO_NOME',
+    ]) ||
+    pickString(servicoComFuncionario, ['funcionarioNome', 'nomeFuncionario', 'responsavelNome']) ||
+    pickString(funcionarioObj, ['nome', 'name', 'nomeFuncionario', 'login']) ||
+    pickString(ownerObj, ['nome', 'name', 'username', 'login']) ||
+    (ownerText && !ownerTextLooksEmail ? ownerText : undefined) ||
+    (funcionarioText && !funcionarioTextLooksEmail ? funcionarioText : undefined) ||
+    funcionarioEmail ||
+    responsavelFallback;
 
   return {
     id: String(idNumber || numero),
     numero,
     clienteId: clienteId ? String(clienteId) : undefined,
+    clienteNome: String(item.clienteNome ?? clienteObj?.nome ?? '').trim() || undefined,
+    funcionarioId: funcionarioId ? String(funcionarioId) : undefined,
+    funcionarioNome,
+    funcionarioEmail,
     veiculoId: item.veiculoId ? String(item.veiculoId) : undefined,
     dataAbertura: String(item.dataAbertura ?? item.dataCriacao ?? new Date().toISOString()),
     dataConclusao: item.dataConclusao ? String(item.dataConclusao) : undefined,
     status,
     defeito: descricao || undefined,
     observacoes: String(item.observacoes ?? item.descricao ?? '').trim() || undefined,
-    servicos: Array.isArray(item.servicos) ? (item.servicos as any[]) : [],
+    servicos: servicosRaw as any[],
     valorTotal: valor,
-    ownerEmail: item.ownerEmail ? String(item.ownerEmail) : undefined,
+    ownerEmail:
+      pickString(item, ['ownerEmail', 'owner_email', 'responsavelEmail', 'responsavel_email']) ||
+      pickString(ownerObj, ['email', 'mail', 'username', 'login']) ||
+      undefined,
   };
 }
 
@@ -100,7 +195,7 @@ function toOrdemServicoDTO(ordem: Partial<OrdemServico>): OrdemServicoDTO {
     throw new Error('Cliente obrigatorio para salvar ordem.');
   }
 
-  const descricao = (ordem.defeito || ordem.observacoes || runtime?.descricao || 'Ordem de servico').trim();
+  const descricao = (ordem.observacoes || ordem.defeito || runtime?.descricao || 'Ordem de servico').trim();
   const valorServicos = Array.isArray(ordem.servicos)
     ? ordem.servicos.reduce((total, item) => total + (Number(item.valor) || 0), 0)
     : 0;
