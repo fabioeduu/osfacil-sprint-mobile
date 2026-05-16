@@ -67,7 +67,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
           setModeState(persisted);
         }
       } catch {
-        // Keep default system mode if storage fails.
+        
       }
     })();
   }, []);
