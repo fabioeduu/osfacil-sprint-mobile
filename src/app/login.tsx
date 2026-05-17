@@ -153,6 +153,14 @@ export default function LoginPage() {
           >
             <Text style={[styles.secondaryButtonText, { color: colors.primary }]}>Cadastrar</Text>
           </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.secondaryButton, { borderColor: colors.primarySoft, backgroundColor: colors.primarySoft, marginTop: 6 }]} 
+            onPress={() => router.push('/login-funcionario')}
+            disabled={loggingIn}
+          >
+            <Text style={[styles.secondaryButtonText, { color: colors.primary }]}>Entrar como funcionário</Text>
+          </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>

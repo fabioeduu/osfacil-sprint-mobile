@@ -39,9 +39,9 @@ export default function RegisterPage() {
       Alert.alert('Erro', 'CPF inválido. Informe 11 dígitos.');
       return;
     }
-    if (rawTelefone.length < 10) {
-      setError('Telefone inválido. Informe ao menos DDD + número.');
-      Alert.alert('Erro', 'Telefone inválido. Informe ao menos DDD + número.');
+    if (rawTelefone.length < 10 || rawTelefone.length > 11) {
+      setError('Telefone inválido. Informe DDD + número (10 ou 11 dígitos).');
+      Alert.alert('Erro', 'Telefone inválido. Informe DDD + número (10 ou 11 dígitos).');
       return;
     }
 
