@@ -1,9 +1,10 @@
 ﻿import React, { useState } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Alert, Modal, ScrollView } from "react-native";
 import Container from "../../components/Container";
 import { useOrdens, useClientes, useVeiculos } from "../../hooks";
 import useAuth from "../../hooks/useAuth";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useNotification } from "../../hooks";
+import { useLocalSearchParams, useRouter, Redirect } from "expo-router";
 import { Servico, Cliente, Veiculo, OrdemServico, StatusOrdem } from "../../types";
 import { useAppTheme } from '../../theme';
 import OrdemListTab from "../../components/ordem/OrdemListTab";
@@ -15,11 +16,19 @@ type Tab = "listar" | "criar" | "editar";
 export default function OrdensPage() {
   const { colors } = useAppTheme();
   const { id: queryId } = useLocalSearchParams();
+  const { sendNotification } = useNotification();
+  const auth = useAuth();
+  const router = useRouter();
+  
+  
+  if (auth.role && !['funcionario', 'admin'].includes(auth.role.toLowerCase())) {
+    return <Redirect href="/(tabs)/busca" />;
+  }
+  
   const [tab, setTab] = useState<Tab>("listar");
   const { ordens, loading: loadingOrdens, criar, atualizar, remover } = useOrdens();
   const { clientes } = useClientes();
   const { veiculos } = useVeiculos();
-  const auth = useAuth();
   const [defeito, setDefeito] = useState("");
   const [observacoes, setObservacoes] = useState("");
   const [clienteId, setClienteId] = useState<string>("");
@@ -31,12 +40,30 @@ export default function OrdensPage() {
   const [servicos, setServicos] = useState<Servico[]>([]);
   const [selectedOrdem, setSelectedOrdem] = useState<OrdemServico | null>(null);
   const [editObservacoes, setEditObservacoes] = useState("");
+  const [editValorMaoObra, setEditValorMaoObra] = useState("");
   const [editStatus, setEditStatus] = useState<StatusOrdem>("ABERTA");
   const [showClienteList, setShowClienteList] = useState(false);
   const [showVeiculoList, setShowVeiculoList] = useState(false);
-  const router = useRouter();
+  const [clienteSearch, setClienteSearch] = useState('');
+  const [ordemDetalheAberta, setOrdemDetalheAberta] = useState<OrdemServico | null>(null);
   const canManageOrdens = auth.isAuthenticated;
   const ordensVisiveis = ordens;
+
+  const formatValorServico = (value: string) => {
+    const normalized = value.replace(',', '.').replace(/[^\d.]/g, '');
+    const parts = normalized.split('.');
+    const integerPart = parts[0] || '';
+    const decimalPart = (parts[1] || '').slice(0, 2);
+    return parts.length > 1 ? `${integerPart}.${decimalPart}` : integerPart;
+  };
+
+  const formatCurrency = (value: number) => {
+    const safeValue = Number.isFinite(value) ? value : 0;
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(safeValue);
+  };
 
   const ensureCanManageOrdens = () => {
     if (canManageOrdens) return true;
@@ -53,6 +80,7 @@ export default function OrdensPage() {
         setSelectedOrdem(o);
         setEditObservacoes(o.observacoes || "");
         setEditStatus(o.status || "ABERTA");
+        setEditValorMaoObra(String(o.valorTotal ?? 0));
         if (canManageOrdens) setTab("editar");
       }
     }
@@ -77,6 +105,7 @@ export default function OrdensPage() {
     setClienteId(cliente.id);
     setClienteSelecionado(cliente);
     setShowClienteList(false);
+    setClienteSearch('');
     
     setVeiculoId('');
     setVeiculoSelecionado(null);
@@ -112,6 +141,12 @@ export default function OrdensPage() {
         veiculoId: veiculoId || undefined,
       });
       Alert.alert("Sucesso", "Ordem criada");
+        await sendNotification(
+          "Nova Ordem Criada",
+          `Ordem de serviço #{defeito} foi criada com sucesso para ${clienteSelecionado?.nome || 'cliente'}`,
+          { orderId: selectedOrdem?.id, screen: '/(tabs)/ordem' },
+          2
+        );
       setDefeito("");
       setObservacoes("");
       setClienteId("");
@@ -138,6 +173,7 @@ export default function OrdensPage() {
       setSelectedOrdem(o);
       setEditObservacoes(o.observacoes || "");
       setEditStatus(o.status || "ABERTA");
+      setEditValorMaoObra(String(o.valorTotal ?? 0));
       setTab("editar");
     }
   };
@@ -146,9 +182,28 @@ export default function OrdensPage() {
     if (!selectedOrdem) return;
     if (!ensureCanManageOrdens()) return;
     try {
-      const updated = { ...selectedOrdem, observacoes: editObservacoes, status: editStatus };
+      const valorMaoObra = Number(String(editValorMaoObra).replace(',', '.'));
+      if (!Number.isFinite(valorMaoObra) || valorMaoObra < 0) {
+        Alert.alert('Erro', 'Informe um valor válido para a mão de obra');
+        return;
+      }
+
+      const updated = {
+        ...selectedOrdem,
+        observacoes: editObservacoes,
+        status: editStatus,
+        valorTotal: valorMaoObra,
+      };
       await atualizar(updated);
+      setSelectedOrdem(updated);
+      setOrdemDetalheAberta((current) => (current?.id === updated.id ? updated : current));
       Alert.alert("Sucesso", "Ordem atualizada");
+        await sendNotification(
+          "Ordem Atualizada",
+          `Ordem #{updated.numero} foi atualizada para status: ${editStatus}`,
+          { orderId: updated.id, screen: '/(tabs)/ordem' },
+          1
+        );
       setTab("listar");
       
     } catch (e: any) {
@@ -175,10 +230,11 @@ export default function OrdensPage() {
     ]);
   };
 
-  const getNomeCliente = (id?: string) => {
-    if (!id) return "Sem cliente";
-    const cliente = clientes.find(c => c.id === id);
-    return cliente?.nome || "Cliente desconhecido";
+  const getNomeCliente = (id?: string, nomeFallback?: string) => {
+    if (!id) return nomeFallback || "Sem cliente";
+    const normalizedId = String(id).trim();
+    const cliente = clientes.find(c => String(c.id).trim() === normalizedId);
+    return cliente?.nome || nomeFallback || "Cliente desconhecido";
   };
 
   const getVeiculoDescricao = (id?: string) => {
@@ -186,7 +242,48 @@ export default function OrdensPage() {
     return `${veiculo?.marca || ''} ${veiculo?.modelo || ''} ${veiculo?.placa ? '— ' + veiculo.placa : ''}`;
   };
 
+  const formatValorDigitado = (value: string) => {
+    const normalized = value.replace(',', '.').replace(/[^\d.]/g, '');
+    const parts = normalized.split('.');
+    const integerPart = parts[0] || '';
+    const decimalPart = (parts[1] || '').slice(0, 2);
+    return parts.length > 1 ? `${integerPart}.${decimalPart}` : integerPart;
+  };
+
+  const getFuncionarioNome = (ordem: OrdemServico) => {
+    if (ordem.funcionarioNome) return ordem.funcionarioNome;
+    if (ordem.funcionarioEmail) {
+      if (ordem.funcionarioEmail === auth.email && auth.profile?.nome) {
+        return auth.profile.nome;
+      }
+      return ordem.funcionarioEmail;
+    }
+    if (ordem.ownerEmail) {
+      if (ordem.ownerEmail === auth.email && auth.profile?.nome) {
+        return auth.profile.nome;
+      }
+      return ordem.ownerEmail;
+    }
+    return 'Funcionário não informado';
+  };
+
+  const getFuncionarioDetalhe = (ordem: OrdemServico) => {
+    const nome = getFuncionarioNome(ordem);
+    const email = ordem.funcionarioEmail || ordem.ownerEmail || auth.email || undefined;
+    return { nome, email };
+  };
+
+  const filteredClientes = clientes.filter((cliente) => {
+    const query = clienteSearch.trim().toLowerCase();
+    if (!query) return true;
+    return [cliente.nome, cliente.email || '', cliente.cpf || '', cliente.telefone || '']
+      .some((field) => String(field).toLowerCase().includes(query));
+  });
+
+  const clienteVeiculosDaOrdem = veiculos.filter((veiculo) => String(veiculo.clienteId) === String(selectedOrdem?.clienteId || ordemDetalheAberta?.clienteId || ''));
+
   return (
+    <>
     <Container>
       <View style={[styles.tabs, { borderColor: colors.border }]}> 
         <TouchableOpacity style={[styles.tab, tab === "listar" && { borderColor: colors.primary, borderBottomWidth: 2 }]} onPress={() => setTab("listar")}>
@@ -214,6 +311,11 @@ export default function OrdensPage() {
           ordens={ordensVisiveis}
           auth={{ email: auth.email, isFuncionario: canManageOrdens, isAdmin: auth.isAdmin }}
           getNomeCliente={getNomeCliente}
+          formatCurrency={formatCurrency}
+          onSelecionarOrdem={(id) => {
+            const ordem = ordensVisiveis.find((item) => item.id === id) || null;
+            setOrdemDetalheAberta(ordem);
+          }}
           onEditar={abrirEditar}
           onExcluir={handleDelete}
         />
@@ -229,20 +331,28 @@ export default function OrdensPage() {
           veiculoSelecionado={veiculoSelecionado}
           showClienteList={showClienteList}
           showVeiculoList={showVeiculoList}
+          clienteSearch={clienteSearch}
+          filteredClientes={filteredClientes}
           defeito={defeito}
           observacoes={observacoes}
           servicoDesc={servicoDesc}
           servicoValor={servicoValor}
           servicos={servicos}
-          onToggleClienteList={() => setShowClienteList(!showClienteList)}
+          formatCurrency={formatCurrency}
+          onToggleClienteList={() => {
+            const next = !showClienteList;
+            setShowClienteList(next);
+            if (!next) setClienteSearch('');
+          }}
           onToggleVeiculoList={() => setShowVeiculoList(!showVeiculoList)}
           onSelecionarCliente={selecionarCliente}
           onSelecionarVeiculo={selecionarVeiculo}
           onGoCadastrarVeiculo={() => router.push('/(tabs)/veiculos?clienteId=' + (clienteId || ''))}
+          onClienteSearchChange={setClienteSearch}
           onDefeitoChange={setDefeito}
           onObservacoesChange={setObservacoes}
           onServicoDescChange={setServicoDesc}
-          onServicoValorChange={setServicoValor}
+          onServicoValorChange={(value) => setServicoValor(formatValorServico(value))}
           onAddServico={addServico}
           onSalvar={salvarNova}
         />
@@ -254,14 +364,88 @@ export default function OrdensPage() {
           selectedOrdem={selectedOrdem}
           editStatus={editStatus}
           editObservacoes={editObservacoes}
+          editValorMaoObra={editValorMaoObra}
+          clienteVeiculos={clienteVeiculosDaOrdem}
+          formatCurrency={formatCurrency}
           getNomeCliente={getNomeCliente}
           getVeiculoDescricao={getVeiculoDescricao}
           onEditStatus={setEditStatus}
           onEditObservacoes={setEditObservacoes}
+          onEditValorMaoObra={(value) => setEditValorMaoObra(formatValorDigitado(value))}
           onSalvar={salvarEdicao}
         />
       )}
     </Container>
+      <Modal
+        visible={Boolean(ordemDetalheAberta)}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setOrdemDetalheAberta(null)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.modalCard, { backgroundColor: colors.surface, borderColor: colors.border }]}> 
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Detalhes da Ordem #{ordemDetalheAberta?.numero}</Text>
+
+            {ordemDetalheAberta ? (
+              <ScrollView style={{ maxHeight: 360 }} showsVerticalScrollIndicator={false}>
+                <View style={[styles.modalSection, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}> 
+                  <Text style={[styles.modalLabel, { color: colors.textMuted }]}>Status</Text>
+                  <Text style={[styles.modalValue, { color: colors.primary }]}>{ordemDetalheAberta.status}</Text>
+                </View>
+
+                <View style={[styles.modalSection, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}> 
+                  <Text style={[styles.modalLabel, { color: colors.textMuted }]}>Observação</Text>
+                  <Text style={[styles.modalValue, { color: colors.text }]}>{ordemDetalheAberta.observacoes || ordemDetalheAberta.defeito || 'Sem observação'}</Text>
+                </View>
+
+                <View style={[styles.modalSection, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}> 
+                  <Text style={[styles.modalLabel, { color: colors.textMuted }]}>Cliente</Text>
+                  <Text style={[styles.modalValue, { color: colors.text }]}>{getNomeCliente(ordemDetalheAberta.clienteId, ordemDetalheAberta.clienteNome)}</Text>
+                </View>
+
+                <View style={[styles.modalSection, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}> 
+                  <Text style={[styles.modalLabel, { color: colors.textMuted }]}>Funcionário responsável</Text>
+                  <Text style={[styles.modalValue, { color: colors.text }]}>{getFuncionarioDetalhe(ordemDetalheAberta).nome}</Text>
+                  {getFuncionarioDetalhe(ordemDetalheAberta).email ? (
+                    <Text style={[styles.modalSubValue, { color: colors.textMuted }]}>{getFuncionarioDetalhe(ordemDetalheAberta).email}</Text>
+                  ) : null}
+                </View>
+
+                <View style={[styles.modalSection, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}> 
+                  <Text style={[styles.modalLabel, { color: colors.textMuted }]}>Serviços</Text>
+                  {ordemDetalheAberta.servicos?.length ? ordemDetalheAberta.servicos.map((servico) => (
+                    <View key={servico.id} style={{ marginBottom: 8 }}>
+                      <Text style={[styles.modalValue, { color: colors.text }]}>{servico.descricao} - {formatCurrency(Number(servico.valor))}</Text>
+                      {(
+                        (servico as any).funcionarioNome || (servico as any).funcionarioEmail
+                      ) ? (
+                        <Text style={[styles.modalSubValue, { color: colors.textMuted }]}>Realizado por: {( (servico as any).funcionarioNome || (servico as any).funcionarioEmail )}</Text>
+                      ) : null}
+                    </View>
+                  )) : (
+                    <Text style={[styles.modalValue, { color: colors.text }]}>Sem serviços adicionais</Text>
+                  )}
+                </View>
+
+                <View style={[styles.modalSection, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}> 
+                  <Text style={[styles.modalLabel, { color: colors.textMuted }]}>Valor total</Text>
+                  <Text style={[styles.modalValue, { color: colors.primary }]}>{formatCurrency(ordemDetalheAberta.valorTotal)}</Text>
+                </View>
+              </ScrollView>
+            ) : null}
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalButton, { backgroundColor: colors.primarySoft }]}
+                onPress={() => setOrdemDetalheAberta(null)}
+              >
+                <Text style={[styles.modalButtonText, { color: colors.primary }]}>Fechar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </>
   );
 }
 
@@ -329,5 +513,117 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#999",
     marginTop: 2
+  },
+  vehicleCard: {
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 12,
+    gap: 6,
+  },
+  vehicleGridCard: {
+    flex: 0.48,
+  },
+  vehiclesGridContainer: {
+    borderWidth: 1,
+    borderRadius: 8,
+    marginBottom: 12,
+    padding: 8,
+  },
+  vehicleCardTop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  vehicleTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  vehicleSubtitle: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  vehicleMeta: {
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  linkChip: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    alignSelf: 'center',
+  },
+  linkChipText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    padding: 16,
+  },
+  modalCard: {
+    borderWidth: 1,
+    borderRadius: 20,
+    padding: 16,
+    maxWidth: 520,
+    width: '100%',
+    alignSelf: 'center',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  modalSection: {
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 10,
+  },
+  modalLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  modalValue: {
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '600',
+  },
+  modalSubValue: {
+    fontSize: 12,
+    marginTop: 4,
+  },
+  modalActions: {
+    marginTop: 6,
+    alignItems: 'center',
+  },
+  modalButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    borderRadius: 12,
+    minWidth: 120,
+    alignItems: 'center',
+  },
+  modalButtonText: {
+    fontWeight: '700',
+  },
+  detailBox: {
+    marginTop: 10,
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 10,
+    gap: 6,
+  },
+  detailLine: {
+    fontSize: 13,
+    lineHeight: 18,
   }
 });

@@ -5,22 +5,26 @@ type Props = {
   colors: any;
   styles: any;
   clientes: Cliente[];
+  filteredClientes: Cliente[];
   veiculos: Veiculo[];
   clienteId: string;
   clienteSelecionado: Cliente | null;
   veiculoSelecionado: Veiculo | null;
   showClienteList: boolean;
   showVeiculoList: boolean;
+  clienteSearch: string;
   defeito: string;
   observacoes: string;
   servicoDesc: string;
   servicoValor: string;
   servicos: Servico[];
+  formatCurrency: (value: number) => string;
   onToggleClienteList: () => void;
   onToggleVeiculoList: () => void;
   onSelecionarCliente: (cliente: Cliente) => void;
   onSelecionarVeiculo: (veiculo: Veiculo) => void;
   onGoCadastrarVeiculo: () => void;
+  onClienteSearchChange: (value: string) => void;
   onDefeitoChange: (value: string) => void;
   onObservacoesChange: (value: string) => void;
   onServicoDescChange: (value: string) => void;
@@ -33,22 +37,26 @@ export default function OrdemCreateTab({
   colors,
   styles,
   clientes,
+  filteredClientes,
   veiculos,
   clienteId,
   clienteSelecionado,
   veiculoSelecionado,
   showClienteList,
   showVeiculoList,
+  clienteSearch,
   defeito,
   observacoes,
   servicoDesc,
   servicoValor,
   servicos,
+  formatCurrency,
   onToggleClienteList,
   onToggleVeiculoList,
   onSelecionarCliente,
   onSelecionarVeiculo,
   onGoCadastrarVeiculo,
+  onClienteSearchChange,
   onDefeitoChange,
   onObservacoesChange,
   onServicoDescChange,
@@ -72,10 +80,18 @@ export default function OrdemCreateTab({
 
       {showClienteList && (
         <View style={[styles.clienteListContainer, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+          <TextInput
+            placeholder="Pesquisar cliente"
+            value={clienteSearch}
+            onChangeText={onClienteSearchChange}
+            style={[styles.input, { margin: 8, marginBottom: 0, borderColor: colors.border, color: colors.text, backgroundColor: colors.surfaceAlt || colors.surface }]}
+            placeholderTextColor={colors.textMuted}
+          />
           <FlatList
-            data={clientes}
+            data={filteredClientes}
             keyExtractor={(c) => c.id}
             scrollEnabled={false}
+            ListEmptyComponent={<Text style={{ padding: 12, color: colors.textMuted }}>Nenhum cliente encontrado</Text>}
             renderItem={({ item }) => (
               <TouchableOpacity
                 style={[styles.clienteListItem, { borderBottomColor: colors.border }]}
@@ -106,7 +122,7 @@ export default function OrdemCreateTab({
       {showVeiculoList && (
         <View style={[styles.clienteListContainer, { borderColor: colors.border, backgroundColor: colors.surface }]}>
           <FlatList
-            data={veiculos.filter((v) => v.clienteId === clienteId)}
+            data={veiculos.filter((v) => String(v.clienteId) === String(clienteId))}
             keyExtractor={(v) => v.id}
             scrollEnabled={false}
             renderItem={({ item }) => (
@@ -167,7 +183,7 @@ export default function OrdemCreateTab({
         scrollEnabled={false}
         renderItem={({ item }) => (
           <View style={[styles.servicoItem, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-            <Text style={{ color: colors.text }}>{item.descricao} - R$ {item.valor.toFixed(2)}</Text>
+            <Text style={{ color: colors.text }}>{item.descricao} - {formatCurrency(item.valor)}</Text>
           </View>
         )}
       />
