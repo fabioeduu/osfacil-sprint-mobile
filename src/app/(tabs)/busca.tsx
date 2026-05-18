@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { View, Text, TextInput, Button, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
 import Container from '../../components/Container';
-import { useOrdens } from '../../hooks';
+import { useOrdens, useClientes } from '../../hooks';
+import useAuth from '../../hooks/useAuth';
 import { useRouter } from 'expo-router';
 import { useAppTheme } from '../../theme';
 
@@ -9,20 +10,32 @@ export default function BuscaPage() {
   const { colors } = useAppTheme();
 	const [query, setQuery] = useState('');
 	const { ordens } = useOrdens();
+	const { clientes } = useClientes();
+	const auth = useAuth();
 	const router = useRouter();
 
-	
+	const isFuncionario = auth.role && ['funcionario', 'admin'].includes(auth.role.toLowerCase());
+	const userEmail = auth.email;
+	const clienteAtual = clientes.find(c => c.email === userEmail);
 
 	const results = useMemo(() => {
 		const q = query.trim().toLowerCase();
-		if (!q) return ordens;
-		return ordens.filter(o => {
+		
+		
+		let ordensVisiveis = isFuncionario ? ordens : ordens.filter(o => String(o.clienteId) === String(clienteAtual?.id));
+		
+		if (!q) return ordensVisiveis;
+		return ordensVisiveis.filter(o => {
 			if (String(o.numero).includes(q)) return true;
 			if ((o.defeito || '').toLowerCase().includes(q)) return true;
 			if ((o.status || '').toLowerCase().includes(q)) return true;
 			return false;
 		});
-	}, [query, ordens]);
+	}, [query, ordens, isFuncionario, clienteAtual, clientes]);
+
+	const getResponsavel = (ordem: { funcionarioNome?: string; funcionarioEmail?: string; ownerEmail?: string; funcionarioId?: string }) => {
+		return ordem.funcionarioNome || ordem.funcionarioEmail || ordem.ownerEmail || (ordem.funcionarioId ? `Funcionário #${ordem.funcionarioId}` : 'Não informado');
+	};
 
 	return (
 		<Container>
@@ -37,12 +50,13 @@ export default function BuscaPage() {
 				data={results}
 				keyExtractor={i => i.id}
 				ListEmptyComponent={<Text style={{ marginTop: 16, color: colors.textMuted }}>Nenhum resultado</Text>}
-			renderItem={({ item }) => (
-				<TouchableOpacity style={[styles.item, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => {
-					router.push(`/(tabs)/ordem?id=${item.id}`);
-				}}>
+				renderItem={({ item }) => (
+					<TouchableOpacity style={[styles.item, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => {
+						router.push(`/(tabs)/ordem?id=${item.id}`);
+					}}>
 						<Text style={[styles.itemTitle, { color: colors.text }]}>Ordem #{item.numero} - {item.status}</Text>
 						<Text numberOfLines={2} style={{ color: colors.text }}>{item.defeito}</Text>
+						<Text style={[styles.itemSmall, { color: colors.textMuted, marginTop: 6 }]}>👤 Funcionário: {getResponsavel(item)}</Text>
 						<Text style={[styles.itemSmall, { color: colors.textMuted }]}>R$ {Number(item.valorTotal).toFixed(2)}</Text>
 					</TouchableOpacity>
 				)}

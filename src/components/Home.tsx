@@ -1,8 +1,9 @@
-import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppTheme } from '../theme';
 import { useApexStatus, useClientes, useOrdens, useVeiculos } from '../hooks';
+import { useState } from 'react';
 
 export default function HomeHeader() {
   const router = useRouter();
@@ -10,6 +11,7 @@ export default function HomeHeader() {
   const { clientes } = useClientes();
   const { ordens } = useOrdens();
   const { veiculos } = useVeiculos();
+  const [hoveredCard, setHoveredCard] = useState<string | null>(null);
   const {
     statusItems: apexStatus,
     apexOnline,
@@ -35,39 +37,91 @@ export default function HomeHeader() {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]} showsVerticalScrollIndicator={false}>
-      <View style={[styles.headerSection, { backgroundColor: colors.surface, borderColor: colors.border }]}> 
-  <Image source={require('../../assets/osfacil.png')} style={styles.logo} />
-        <Text style={[styles.titulo, { color: colors.text }]}>OS Facil</Text>
-        <Text style={[styles.subtitulo, { color: colors.textMuted }]}>Painel de operacao da oficina</Text>
+      
+      <View style={[styles.headerSection, { backgroundColor: colors.primary }]}>
+        <Image source={require('../../assets/osfacil.png')} style={styles.logo} />
+        <Text style={styles.titulo}>OS Fácil</Text>
+        <Text style={styles.subtitulo}>Painel de Operação</Text>
       </View>
 
       <View style={styles.welcomeSection}>
-        <Text style={[styles.welcomeTitle, { color: colors.text }]}>Bem-vindo</Text>
+        <Text style={[styles.welcomeTitle, { color: colors.text }]}>Bem-vindo ao painel</Text>
         <Text style={[styles.welcomeDesc, { color: colors.textMuted }]}> 
-          Sistema simples e eficiente para gerenciar suas ordens de serviço automotivas.
+          Gerencie todas as suas ordens de serviço em um só lugar
         </Text>
       </View>
 
+      
       <View style={styles.statsRow}>
-        <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}> 
+        <Pressable
+          onPress={() => router.push('/(tabs)/ordem')}
+          onPressIn={() => setHoveredCard('orders')}
+          onPressOut={() => setHoveredCard(null)}
+          style={[
+            styles.statCard,
+            { 
+              backgroundColor: colors.surface, 
+              borderColor: colors.border,
+              transform: [{ scale: hoveredCard === 'orders' ? 1.05 : 1 }]
+            }
+          ]}
+        >
+          <View style={[styles.statIconBg, { backgroundColor: colors.primarySoft }]}>
+            <Ionicons name="list" size={24} color={colors.primary} />
+          </View>
           <Text style={[styles.statValue, { color: colors.primary }]}>{ordens.length}</Text>
           <Text style={[styles.statLabel, { color: colors.textMuted }]}>Ordens</Text>
-        </View>
-        <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}> 
+        </Pressable>
+
+        <Pressable
+          onPress={() => router.push('/(tabs)/clientes')}
+          onPressIn={() => setHoveredCard('clients')}
+          onPressOut={() => setHoveredCard(null)}
+          style={[
+            styles.statCard,
+            { 
+              backgroundColor: colors.surface, 
+              borderColor: colors.border,
+              transform: [{ scale: hoveredCard === 'clients' ? 1.05 : 1 }]
+            }
+          ]}
+        >
+          <View style={[styles.statIconBg, { backgroundColor: colors.primarySoft }]}>
+            <Ionicons name="people" size={24} color={colors.primary} />
+          </View>
           <Text style={[styles.statValue, { color: colors.primary }]}>{clientes.length}</Text>
           <Text style={[styles.statLabel, { color: colors.textMuted }]}>Clientes</Text>
-        </View>
-        <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}> 
+        </Pressable>
+
+        <Pressable
+          onPress={() => router.push('/(tabs)/veiculos')}
+          onPressIn={() => setHoveredCard('vehicles')}
+          onPressOut={() => setHoveredCard(null)}
+          style={[
+            styles.statCard,
+            { 
+              backgroundColor: colors.surface, 
+              borderColor: colors.border,
+              transform: [{ scale: hoveredCard === 'vehicles' ? 1.05 : 1 }]
+            }
+          ]}
+        >
+          <View style={[styles.statIconBg, { backgroundColor: colors.primarySoft }]}>
+            <Ionicons name="car" size={24} color={colors.primary} />
+          </View>
           <Text style={[styles.statValue, { color: colors.primary }]}>{veiculos.length}</Text>
-          <Text style={[styles.statLabel, { color: colors.textMuted }]}>Veiculos</Text>
-        </View>
+          <Text style={[styles.statLabel, { color: colors.textMuted }]}>Veículos</Text>
+        </Pressable>
       </View>
 
+      
       <View style={[styles.apexSection, { backgroundColor: colors.surface, borderColor: colors.border }]}> 
         <View style={styles.apexHeader}>
           <View style={styles.apexTitleWrap}>
-            <Ionicons name="analytics" size={18} color={colors.primary} />
-            <Text style={[styles.apexTitle, { color: colors.text }]}>Relatorio Oracle APEX</Text>
+            <View style={[styles.apexIconBg, { backgroundColor: colors.primarySoft }]}>
+              <Ionicons name="analytics" size={20} color={colors.primary} />
+            </View>
+            <Text style={[styles.apexTitle, { color: colors.text }]}>Relatório Oracle APEX</Text>
           </View>
           <View style={[styles.apexOnlineBadge, { backgroundColor: apexOnline ? colors.primarySoft : colors.surfaceAlt, borderColor: colors.border }]}> 
             <View style={[styles.apexOnlineDot, { backgroundColor: apexOnline ? colors.success : colors.danger }]} />
@@ -77,7 +131,7 @@ export default function HomeHeader() {
 
         <View style={styles.apexMetaRow}>
           <Text style={[styles.apexHint, { color: colors.textMuted }]}>Fonte: {statusSourceLabel}</Text>
-          <Text style={[styles.apexHint, { color: colors.textMuted }]}>Atualizacao: {lastApexUpdate}</Text>
+          <Text style={[styles.apexHint, { color: colors.textMuted }]}>Atualizado: {lastApexUpdate}</Text>
         </View>
 
         <TouchableOpacity
@@ -85,12 +139,13 @@ export default function HomeHeader() {
           style={[styles.apexRefreshButton, { borderColor: colors.primarySoft, backgroundColor: colors.primarySoft }, apexLoading && { opacity: 0.6 }]}
           disabled={apexLoading}
         >
-          <Text style={[styles.apexRefreshText, { color: colors.primary }]}>{apexLoading ? 'Atualizando dados...' : 'Atualizar relatorio'}</Text>
+          <Ionicons name="refresh" size={16} color={colors.primary} style={{ marginRight: 6 }} />
+          <Text style={[styles.apexRefreshText, { color: colors.primary }]}>{apexLoading ? 'Atualizando...' : 'Atualizar'}</Text>
         </TouchableOpacity>
 
-        {apexError ? <Text style={[styles.apexHint, { color: colors.danger }]}>{apexError}</Text> : null}
+        {apexError ? <Text style={[styles.apexHint, { color: colors.danger }]}>⚠️ {apexError}</Text> : null}
         {!apexLoading && !apexError && apexStatus.length === 0 ? (
-          <Text style={[styles.apexHint, { color: colors.textMuted }]}>Sem dados de status no APEX.</Text>
+          <Text style={[styles.apexHint, { color: colors.textMuted }]}>Sem dados disponíveis</Text>
         ) : null}
 
         {!apexLoading && !apexError && apexItems.length > 0 ? (
@@ -98,18 +153,18 @@ export default function HomeHeader() {
             <View style={styles.apexSummaryRow}>
               <View style={[styles.apexSummaryCard, { backgroundColor: colors.primarySoft, borderColor: colors.border }]}> 
                 <Text style={[styles.apexSummaryValue, { color: colors.primary }]}>{apexTotal}</Text>
-                <Text style={[styles.apexSummaryLabel, { color: colors.text }]}>Total de ordens</Text>
+                <Text style={[styles.apexSummaryLabel, { color: colors.text }]}>Total</Text>
               </View>
               <View style={[styles.apexSummaryCard, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}> 
                 <Text style={[styles.apexSummaryValue, { color: colors.text }]}>{apexItems.length}</Text>
-                <Text style={[styles.apexSummaryLabel, { color: colors.textMuted }]}>Status mapeados</Text>
+                <Text style={[styles.apexSummaryLabel, { color: colors.textMuted }]}>Status</Text>
               </View>
             </View>
 
-            {apexItems.map((item) => {
+            {apexItems.map((item, idx) => {
               const widthPercent = apexMax > 0 ? Math.max(8, Math.round((item.quantidade / apexMax) * 100)) : 8;
               return (
-                <View key={item.status} style={styles.apexReportRow}>
+                <View key={item.status + idx} style={styles.apexReportRow}>
                   <View style={styles.apexReportHead}>
                     <Text style={[styles.apexReportStatus, { color: colors.text }]} numberOfLines={1}>{item.status}</Text>
                     <Text style={[styles.apexReportTotal, { color: colors.primary }]}>{item.quantidade}</Text>
@@ -124,67 +179,31 @@ export default function HomeHeader() {
         ) : null}
       </View>
 
-      <View style={styles.cardsContainer}>
-        <TouchableOpacity 
-          style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
-          onPress={() => router.push('/(tabs)/ordem')}
-          activeOpacity={0.8}
-        >
-          <View style={[styles.cardIcon, { backgroundColor: colors.primarySoft }]}>
-            <Ionicons name="list" size={32} color={colors.primary} />
-          </View>
-          <Text style={[styles.cardTitle, { color: colors.text }]}>Ordens</Text>
-          <Text style={[styles.cardDesc, { color: colors.textMuted }]}>Ver e gerenciar ordens</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
-          onPress={() => router.push('/(tabs)/clientes')}
-          activeOpacity={0.8}
-        >
-          <View style={[styles.cardIcon, { backgroundColor: colors.primarySoft }]}>
-            <Ionicons name="people" size={32} color={colors.primary} />
-          </View>
-          <Text style={[styles.cardTitle, { color: colors.text }]}>Clientes</Text>
-          <Text style={[styles.cardDesc, { color: colors.textMuted }]}>Gerenciar clientes</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
-          onPress={() => router.push('/(tabs)/busca')}
-          activeOpacity={0.8}
-        >
-          <View style={[styles.cardIcon, { backgroundColor: colors.primarySoft }]}>
-            <Ionicons name="search" size={32} color={colors.primary} />
-          </View>
-          <Text style={[styles.cardTitle, { color: colors.text }]}>Buscar</Text>
-          <Text style={[styles.cardDesc, { color: colors.textMuted }]}>Pesquisar ordens</Text>
-        </TouchableOpacity>
-      </View>
-
+      
       <View style={styles.actionsContainer}>
-        <TouchableOpacity 
-          style={[styles.primaryButton, { backgroundColor: colors.primary }]}
+        <Pressable 
           onPress={() => router.push('/(tabs)/ordem')}
+          style={[styles.primaryButton, { backgroundColor: colors.primary }]}
         >
           <Ionicons name="add-circle" size={24} color="#fff" style={{ marginRight: 8 }} />
           <Text style={styles.primaryButtonText}>Nova Ordem</Text>
-        </TouchableOpacity>
+        </Pressable>
 
-        <TouchableOpacity 
-          style={[styles.secondaryButton, { backgroundColor: colors.primarySoft, borderColor: colors.primarySoft }]}
+        <Pressable 
           onPress={() => router.push('/(tabs)/clientes')}
+          style={[styles.secondaryButton, { backgroundColor: colors.primarySoft, borderColor: colors.primary }]}
         >
           <Ionicons name="person-add" size={24} color={colors.primary} style={{ marginRight: 8 }} />
           <Text style={[styles.secondaryButtonText, { color: colors.primary }]}>Novo Cliente</Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
 
-      <View style={[styles.infoSection, { backgroundColor: colors.surface, borderLeftColor: colors.primary, borderColor: colors.border }]}> 
-        <Text style={[styles.infoTitle, { color: colors.text }]}>Sobre o aplicativo</Text>
+      
+      <View style={[styles.infoSection, { backgroundColor: colors.primarySoft, borderLeftColor: colors.primary }]}> 
+        <Ionicons name="information-circle" size={20} color={colors.primary} style={{ marginBottom: 8 }} />
+        <Text style={[styles.infoTitle, { color: colors.text }]}>💡 Dica</Text>
         <Text style={[styles.infoText, { color: colors.textMuted }]}> 
-          OS Fácil é um gerenciamento de ordens de serviço automotivas. 
-          Organize seus clientes, veículos e serviços de forma simples e eficiente!!
+          Mantenha os dados atualizados para um melhor gerenciamento das ordens de serviço.
         </Text>
       </View>
 
@@ -196,37 +215,34 @@ export default function HomeHeader() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
-
   },
   headerSection: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 30,
     paddingHorizontal: 16,
-    borderWidth: 1,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
     marginBottom: 24,
   },
   logo: {
-    width: 120,
-    height: 120,
+    width: 100,
+    height: 100,
     resizeMode: 'contain',
     marginBottom: 12,
-    borderRadius: 60,
-    borderWidth: 3,
-    borderColor: '#0f6cbd',
+    borderRadius: 50,
+    borderWidth: 2,
+    borderColor: '#ffffff',
   },
   titulo: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#10223b',
+    color: '#ffffff',
     marginBottom: 4,
   },
   subtitulo: {
     fontSize: 14,
-    color: '#5b6b82',
+    color: 'rgba(255,255,255,0.85)',
     fontWeight: '500',
   },
   welcomeSection: {
@@ -236,12 +252,10 @@ const styles = StyleSheet.create({
   welcomeTitle: {
     fontSize: 24,
     fontWeight: '600',
-    color: '#10223b',
     marginBottom: 8,
   },
   welcomeDesc: {
     fontSize: 14,
-    color: '#5b6b82',
     lineHeight: 20,
   },
   statsRow: {
@@ -257,6 +271,14 @@ const styles = StyleSheet.create({
     padding: 12,
     alignItems: 'center',
   },
+  statIconBg: {
+    width: 48,
+    height: 48,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
   statValue: {
     fontSize: 20,
     fontWeight: '800',
@@ -265,89 +287,6 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontSize: 12,
     fontWeight: '600',
-  },
-  cardsContainer: {
-    paddingHorizontal: 16,
-    marginBottom: 24,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  card: {
-    width: '48%',
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  cardIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#10223b',
-    marginBottom: 4,
-  },
-  cardDesc: {
-    fontSize: 12,
-    color: '#5b6b82',
-    textAlign: 'center',
-  },
-  actionsContainer: {
-    paddingHorizontal: 16,
-    marginBottom: 24,
-    gap: 12,
-  },
-  primaryButton: {
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  primaryButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  secondaryButton: {
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#d8e9fb',
-  },
-  secondaryButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  infoSection: {
-    marginHorizontal: 16,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 16,
-    borderLeftWidth: 4,
-  },
-  infoTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  infoText: {
-    fontSize: 13,
-    lineHeight: 20,
   },
   apexSection: {
     marginHorizontal: 16,
@@ -363,7 +302,14 @@ const styles = StyleSheet.create({
   apexTitleWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
+  },
+  apexIconBg: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   apexHeader: {
     flexDirection: 'row',
@@ -400,6 +346,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     marginBottom: 10,
     alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   apexRefreshText: {
     fontSize: 12,
@@ -442,22 +390,69 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   apexReportStatus: {
-    flex: 1,
     fontSize: 12,
     fontWeight: '600',
-    marginRight: 8,
+    flex: 1,
   },
   apexReportTotal: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '700',
   },
   apexBarTrack: {
-    height: 8,
-    borderRadius: 999,
+    height: 6,
+    borderRadius: 3,
     overflow: 'hidden',
   },
   apexBarFill: {
     height: '100%',
-    borderRadius: 999,
+    borderRadius: 3,
+  },
+  actionsContainer: {
+    paddingHorizontal: 16,
+    marginBottom: 24,
+    gap: 12,
+  },
+  primaryButton: {
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  primaryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  secondaryButton: {
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+  },
+  secondaryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  infoSection: {
+    marginHorizontal: 16,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 16,
+    borderLeftWidth: 4,
+  },
+  infoTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  infoText: {
+    fontSize: 13,
+    lineHeight: 20,
   },
 });

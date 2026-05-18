@@ -114,7 +114,7 @@ export default function PerfilPage() {
     Ultima atualizacao: {lastApexUpdate}
   </Text>
 
-  {/* ERRO */}
+  
   {apexError && (
     <Text style={[styles.apexHint, { color: colors.danger }]}>
       {apexError}
@@ -175,7 +175,7 @@ export default function PerfilPage() {
         </View>
 
         <View style={[styles.infoBox, { backgroundColor: colors.surface, borderColor: colors.border }]}> 
-          <Text style={[styles.infoTitle, { color: colors.text }]}>Sobre</Text>
+          <Text style={[styles.infoTitle, { color: colors.text }]}>Versão</Text>
           <Text style={[styles.infoText, { color: colors.textMuted }]}> 
             OS Fácil v1.0.0
           </Text>
@@ -188,6 +188,12 @@ export default function PerfilPage() {
         <View style={{ marginTop: 20 }}>
           <TouchableOpacity
             style={styles.logoutButton}
+            onPress={() => router.push('/about')}
+          >
+            <Text style={styles.logoutText}>Sobre o App</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.logoutButton, { marginTop: 12, backgroundColor: '#ce1a1a' }]}
             onPress={() => {
               Alert.alert('Sair', 'Deseja realmente sair?', [
                 { text: 'Cancelar', style: 'cancel' },
@@ -263,7 +269,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   logoutButton: {
-    backgroundColor: '#ff4d4f',
+    backgroundColor: '#578cb1',
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',

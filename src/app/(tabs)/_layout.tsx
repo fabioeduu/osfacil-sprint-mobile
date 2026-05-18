@@ -18,7 +18,6 @@ try {
 
 import { Slot } from 'expo-router';
 import FooterNav from '../../components/Footer';
-import Container from '../../components/Container';
 import useAuth from '../../hooks/useAuth';
 import { useAppTheme } from '../../theme';
 
@@ -51,9 +50,7 @@ export default function TabsLayout() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <Container>
-        <Slot />
-      </Container>
+      <Slot />
       <SafeAreaView edges={["bottom"]} style={{ backgroundColor: 'transparent' }}>
         <FooterNav />
       </SafeAreaView>
