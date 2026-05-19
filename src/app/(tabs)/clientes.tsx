@@ -2,7 +2,8 @@ import React, { useState } from "react";
 import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from "react-native";
 import Container from "../../components/Container";
 import { useClientes } from '../../hooks';
-import { useLocalSearchParams } from "expo-router";
+import useAuth from "../../hooks/useAuth";
+import { useLocalSearchParams, Redirect } from "expo-router";
 import { Cliente } from '../../types';
 import { useAppTheme } from '../../theme';
 
@@ -11,6 +12,13 @@ type Tab = 'listar' | 'criar' | 'editar';
 export default function ClientesPage() {
   const { colors } = useAppTheme();
   const { id: queryId } = useLocalSearchParams();
+  const auth = useAuth();
+  
+  
+  if (auth.role && !['funcionario', 'admin'].includes(auth.role.toLowerCase())) {
+    return <Redirect href="/(tabs)/perfil" />;
+  }
+  
   const [tab, setTab] = useState<Tab>('listar');
   const { clientes, loading, criar, atualizar, remover } = useClientes();
   const [nome, setNome] = useState('');
@@ -26,6 +34,24 @@ export default function ClientesPage() {
   const [editSenha, setEditSenha] = useState('');
   const [editTelefone, setEditTelefone] = useState('');
   const [editEndereco, setEditEndereco] = useState('');
+
+  const onlyDigits = (s: string) => s.replace(/\D/g, '');
+
+  const formatCpf = (text: string) => {
+    const digits = onlyDigits(text).slice(0, 11);
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 6) return `${digits.slice(0,3)}.${digits.slice(3)}`;
+    if (digits.length <= 9) return `${digits.slice(0,3)}.${digits.slice(3,6)}.${digits.slice(6)}`;
+    return `${digits.slice(0,3)}.${digits.slice(3,6)}.${digits.slice(6,9)}-${digits.slice(9,11)}`;
+  };
+
+  const formatTelefone = (text: string) => {
+    const digits = onlyDigits(text).slice(0, 11);
+    if (digits.length <= 2) return `(${digits}`;
+    if (digits.length <= 6) return `(${digits.slice(0,2)}) ${digits.slice(2)}`;
+    if (digits.length <= 10) return `(${digits.slice(0,2)}) ${digits.slice(2,6)}-${digits.slice(6)}`;
+    return `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7)}`;
+  };
 
   
   React.useEffect(() => {
@@ -54,6 +80,8 @@ export default function ClientesPage() {
 
   const salvarNovo = async () => {
     try {
+      const rawCpf = onlyDigits(cpf);
+      const rawTelefone = onlyDigits(telefone);
       if (!nome.trim()) {
         Alert.alert('Erro', 'Preencha o nome');
         return;
@@ -62,7 +90,15 @@ export default function ClientesPage() {
         Alert.alert('Erro', 'CPF, email, senha, telefone e endereco sao obrigatorios');
         return;
       }
-      await criar({ nome: nome.trim(), cpf: cpf.trim(), email: email.trim(), senha: senha.trim(), telefone: telefone.trim(), endereco: endereco.trim() });
+      if (rawCpf.length !== 11) {
+        Alert.alert('Erro', 'CPF inválido. Informe 11 dígitos.');
+        return;
+      }
+      if (rawTelefone.length < 10 || rawTelefone.length > 11) {
+        Alert.alert('Erro', 'Telefone inválido. Informe DDD + número (10 ou 11 dígitos).');
+        return;
+      }
+      await criar({ nome: nome.trim(), cpf: rawCpf, email: email.trim(), senha: senha.trim(), telefone: rawTelefone, endereco: endereco.trim() });
       Alert.alert('Sucesso', 'Cliente criado');
       setNome('');
       setCpf('');
@@ -95,6 +131,8 @@ export default function ClientesPage() {
   const salvarEdicao = async () => {
     if (!selectedCliente) return;
     try {
+      const rawCpf = onlyDigits(editCpf);
+      const rawTelefone = onlyDigits(editTelefone);
       if (!editNome.trim()) {
         Alert.alert('Erro', 'Preencha o nome');
         return;
@@ -103,7 +141,15 @@ export default function ClientesPage() {
         Alert.alert('Erro', 'CPF, email, senha, telefone e endereco sao obrigatorios');
         return;
       }
-      const updated: Cliente = { ...selectedCliente, nome: editNome.trim(), cpf: editCpf.trim(), email: editEmail.trim(), senha: editSenha.trim(), telefone: editTelefone.trim(), endereco: editEndereco.trim() };
+      if (rawCpf.length !== 11) {
+        Alert.alert('Erro', 'CPF inválido. Informe 11 dígitos.');
+        return;
+      }
+      if (rawTelefone.length < 10 || rawTelefone.length > 11) {
+        Alert.alert('Erro', 'Telefone inválido. Informe DDD + número (10 ou 11 dígitos).');
+        return;
+      }
+      const updated: Cliente = { ...selectedCliente, nome: editNome.trim(), cpf: rawCpf, email: editEmail.trim(), senha: editSenha.trim(), telefone: rawTelefone, endereco: editEndereco.trim() };
       await atualizar(updated);
       Alert.alert('Sucesso', 'Cliente atualizado');
       setTab('listar');
@@ -148,18 +194,20 @@ export default function ClientesPage() {
           <FlatList
             data={clientes}
             keyExtractor={(c) => c.id}
-            ListEmptyComponent={!loading ? <Text style={{ marginTop: 18, color: colors.textMuted }}>Nenhum cliente cadastrado</Text> : null}
+            numColumns={2}
+            columnWrapperStyle={{ gap: 12, justifyContent: 'space-between', marginBottom: 8 }}
+            ListEmptyComponent={!loading ? <Text style={{ marginTop: 18, color: colors.textMuted, textAlign: 'center', width: '100%' }}>Nenhum cliente cadastrado</Text> : null}
             renderItem={({ item }) => (
-              <View style={[styles.item, { backgroundColor: colors.surface, borderColor: colors.border }]}> 
+              <View style={[styles.gridItem, styles.item, { backgroundColor: colors.surface, borderColor: colors.border }]}> 
                 <Text style={[styles.itemTitle, { color: colors.text }]}>{item.nome}</Text>
                 <Text style={[styles.itemSmall, { color: colors.textMuted }]}>{item.email}</Text>
                 <Text style={[styles.itemSmall, { color: colors.textMuted }]}>{item.telefone}</Text>
-                <View style={{ flexDirection: 'row', marginTop: 8, gap: 8 }}>
-                  <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.primarySoft }]} onPress={() => abrirEditar(item.id)}>
-                    <Text style={[styles.actionText, { color: colors.primary }]}>Editar</Text>
+                <View style={{ flexDirection: 'row', marginTop: 8, gap: 6 }}>
+                  <TouchableOpacity style={[styles.gridActionButton, { backgroundColor: colors.primarySoft, flex: 1 }]} onPress={() => abrirEditar(item.id)}>
+                    <Text style={[styles.actionText, { color: colors.primary, textAlign: 'center' }]}>Editar</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.danger }]} onPress={() => handleDelete(item.id)}>
-                    <Text style={[styles.actionText, { color: '#fff' }]}>Excluir</Text>
+                  <TouchableOpacity style={[styles.gridActionButton, { backgroundColor: colors.danger, flex: 1 }]} onPress={() => handleDelete(item.id)}>
+                    <Text style={[styles.actionText, { color: '#fff', textAlign: 'center' }]}>Excluir</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -172,10 +220,10 @@ export default function ClientesPage() {
         <View style={{ flex: 1 }}>
           <Text style={[styles.title, { color: colors.text }]}>Novo Cliente</Text>
           <TextInput placeholder="Nome *" placeholderTextColor={colors.textMuted} value={nome} onChangeText={setNome} style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]} />
-          <TextInput placeholder="CPF *" placeholderTextColor={colors.textMuted} value={cpf} onChangeText={setCpf} style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]} keyboardType="numeric" />
+          <TextInput placeholder="CPF *" placeholderTextColor={colors.textMuted} value={cpf} onChangeText={(text) => setCpf(formatCpf(text))} style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]} keyboardType="numeric" maxLength={14} />
           <TextInput placeholder="Email" placeholderTextColor={colors.textMuted} value={email} onChangeText={setEmail} style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]} keyboardType="email-address" />
           <TextInput placeholder="Senha *" placeholderTextColor={colors.textMuted} value={senha} onChangeText={setSenha} style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]} secureTextEntry />
-          <TextInput placeholder="Telefone" placeholderTextColor={colors.textMuted} value={telefone} onChangeText={setTelefone} style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]} keyboardType="phone-pad" />
+          <TextInput placeholder="Telefone" placeholderTextColor={colors.textMuted} value={telefone} onChangeText={(text) => setTelefone(formatTelefone(text))} style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]} keyboardType="phone-pad" maxLength={16} />
           <TextInput placeholder="Endereco" placeholderTextColor={colors.textMuted} value={endereco} onChangeText={setEndereco} style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]} />
           <TouchableOpacity style={[styles.primaryButton, { backgroundColor: colors.primary }]} onPress={salvarNovo}>
             <Text style={styles.primaryButtonText}>Salvar Cliente</Text>
@@ -191,13 +239,13 @@ export default function ClientesPage() {
               <Text style={[styles.label, { color: colors.textMuted }]}>Nome</Text>
               <TextInput value={editNome} onChangeText={setEditNome} style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]} />
               <Text style={[styles.label, { color: colors.textMuted }]}>CPF</Text>
-              <TextInput value={editCpf} onChangeText={setEditCpf} style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]} keyboardType="numeric" />
+              <TextInput value={editCpf} onChangeText={(text) => setEditCpf(formatCpf(text))} style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]} keyboardType="numeric" maxLength={14} />
               <Text style={[styles.label, { color: colors.textMuted }]}>Email</Text>
               <TextInput value={editEmail} onChangeText={setEditEmail} style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]} keyboardType="email-address" />
               <Text style={[styles.label, { color: colors.textMuted }]}>Senha</Text>
               <TextInput value={editSenha} onChangeText={setEditSenha} style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]} secureTextEntry />
               <Text style={[styles.label, { color: colors.textMuted }]}>Telefone</Text>
-              <TextInput value={editTelefone} onChangeText={setEditTelefone} style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]} keyboardType="phone-pad" />
+              <TextInput value={editTelefone} onChangeText={(text) => setEditTelefone(formatTelefone(text))} style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]} keyboardType="phone-pad" maxLength={16} />
               <Text style={[styles.label, { color: colors.textMuted }]}>Endereco</Text>
               <TextInput value={editEndereco} onChangeText={setEditEndereco} style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]} />
               <TouchableOpacity style={[styles.primaryButton, { backgroundColor: colors.primary }]} onPress={salvarEdicao}>
@@ -222,9 +270,11 @@ const styles = StyleSheet.create({
   label: { marginTop: 12, marginBottom: 6, fontWeight: '600' },
   input: { borderWidth: 1, borderRadius: 10, padding: 10, marginBottom: 8 },
   item: { padding: 12, borderWidth: 1, borderRadius: 12, marginBottom: 10 },
+  gridItem: { flex: 0.48 },
   itemTitle: { fontWeight: 'bold', fontSize: 16 },
   itemSmall: { marginTop: 4, fontSize: 12 },
   actionButton: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10 },
+  gridActionButton: { paddingVertical: 7, borderRadius: 10 },
   actionText: { fontSize: 12, fontWeight: '700' },
   primaryButton: { paddingVertical: 12, borderRadius: 10, alignItems: 'center', marginTop: 6 },
   primaryButtonText: { color: '#fff', fontWeight: '700' }

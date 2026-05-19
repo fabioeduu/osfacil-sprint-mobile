@@ -23,6 +23,13 @@ export default function Veiculo() {
   const [showClienteList, setShowClienteList] = useState(false);
   const { clienteId: paramClienteId } = useLocalSearchParams() as any;
 
+  const formatPlaca = (text: string) => text.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 8);
+  const formatAno = (text: string) => text.replace(/\D/g, '').slice(0, 4);
+  const isPlacaValida = (value: string) => {
+    const placa = value.trim().toUpperCase();
+    return /^[A-Z]{3}-\d{4}$/.test(placa) || /^[A-Z]{3}\d[A-Z]\d{2}$/.test(placa);
+  };
+
   useEffect(() => {
     if (paramClienteId) {
       setClienteId(String(paramClienteId));
@@ -58,16 +65,25 @@ export default function Veiculo() {
 
   const salvarNovo = async () => {
     try {
+      const placaNormalizada = placa.trim().toUpperCase();
       if (!clienteId || !marca.trim() || !placa.trim()) {
         Alert.alert('Erro', 'Cliente, marca e placa são obrigatórios');
         return;
       }
-      await criar({ clienteId, marca, modelo, placa, ano, cor });
+      if (!isPlacaValida(placaNormalizada)) {
+        Alert.alert('Erro', 'Placa inválida. Use apenas os formatos ABC-1234 ou QSX6C10.');
+        return;
+      }
+      if (ano && ano.length !== 4) {
+        Alert.alert('Erro', 'Ano inválido. Informe 4 dígitos.');
+        return;
+      }
+      
+      await criar({ clienteId, marca: marca.trim(), modelo: modelo.trim(), placa: placaNormalizada, ano: ano.trim(), cor: cor.trim() });
       Alert.alert('Sucesso', 'Veículo criado');
       resetForm();
       setMode('listar');
     } catch (e: any) {
-      console.error(e);
       Alert.alert('Erro', String(getApiErrorMessage(e, 'Não foi possível salvar o veículo')));
     }
   };
@@ -89,11 +105,20 @@ export default function Veiculo() {
   const salvarEdicao = async () => {
     if (!selected) return;
     try {
+      const placaNormalizada = placa.trim().toUpperCase();
       if (!clienteId || !marca.trim() || !placa.trim()) {
         Alert.alert('Erro', 'Cliente, marca e placa são obrigatórios');
         return;
       }
-      const updated: VeiculoType = { ...selected, clienteId, marca, modelo, placa, ano, cor };
+      if (!isPlacaValida(placaNormalizada)) {
+        Alert.alert('Erro', 'Placa inválida. Use apenas os formatos ABC-1234 ou QSX6C10.');
+        return;
+      }
+      if (ano && ano.length !== 4) {
+        Alert.alert('Erro', 'Ano inválido. Informe 4 dígitos.');
+        return;
+      }
+      const updated: VeiculoType = { ...selected, clienteId, marca: marca.trim(), modelo: modelo.trim(), placa: placaNormalizada, ano: ano.trim(), cor: cor.trim() };
       await atualizar(updated);
       Alert.alert('Sucesso', 'Veículo atualizado');
       resetForm();
@@ -137,17 +162,20 @@ export default function Veiculo() {
           <FlatList
             data={veiculos}
             keyExtractor={(v) => v.id}
-            ListEmptyComponent={!loadingVeiculos ? <Text style={{ marginTop: 18, color: colors.textMuted }}>Nenhum veiculo cadastrado</Text> : null}
+            numColumns={2}
+            columnWrapperStyle={{ gap: 12, justifyContent: 'space-between', marginBottom: 8 }}
+            ListEmptyComponent={!loadingVeiculos ? <Text style={{ marginTop: 18, color: colors.textMuted, textAlign: 'center', width: '100%' }}>Nenhum veiculo cadastrado</Text> : null}
             renderItem={({ item }) => (
-              <View style={[styles.item, { backgroundColor: colors.surface, borderColor: colors.border }]}> 
-                <Text style={[styles.itemTitle, { color: colors.text }]}>{item.marca} {item.modelo} - {item.placa}</Text>
+              <View style={[styles.gridItem, styles.item, { backgroundColor: colors.surface, borderColor: colors.border }]}> 
+                <Text style={[styles.itemTitle, { color: colors.text }]}>{item.marca} {item.modelo}</Text>
+                <Text style={[styles.itemSmall, { color: colors.textMuted }]}>Placa: {item.placa}</Text>
                 <Text style={[styles.itemSmall, { color: colors.textMuted }]}>Cliente: {clientes.find(c => c.id === item.clienteId)?.nome || '-'}</Text>
-                <View style={{ flexDirection: 'row', marginTop: 8, gap: 8 }}>
-                  <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.primarySoft }]} onPress={() => abrirEditar(item.id)}>
-                    <Text style={[styles.actionText, { color: colors.primary }]}>Editar</Text>
+                <View style={{ flexDirection: 'row', marginTop: 8, gap: 6 }}>
+                  <TouchableOpacity style={[styles.gridActionButton, { backgroundColor: colors.primarySoft, flex: 1 }]} onPress={() => abrirEditar(item.id)}>
+                    <Text style={[styles.actionText, { color: colors.primary, textAlign: 'center' }]}>Editar</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.danger }]} onPress={() => handleDelete(item.id)}>
-                    <Text style={[styles.actionText, { color: '#fff' }]}>Excluir</Text>
+                  <TouchableOpacity style={[styles.gridActionButton, { backgroundColor: colors.danger, flex: 1 }]} onPress={() => handleDelete(item.id)}>
+                    <Text style={[styles.actionText, { color: '#fff', textAlign: 'center' }]}>Excluir</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -162,7 +190,7 @@ export default function Veiculo() {
 
           <Text style={[styles.label, { color: colors.textMuted }]}>Cliente *</Text>
           <TouchableOpacity style={[styles.clienteButton, { borderColor: colors.border, backgroundColor: colors.surface }]} onPress={() => setShowClienteList(!showClienteList)}>
-            <Text style={[styles.clienteButtonText, { color: colors.text }]}>{clientes.find(c => c.id === clienteId)?.nome || 'Selecione um cliente'}</Text>
+            <Text style={[styles.clienteButtonText, { color: colors.text }]}>{clientes.find(c => String(c.id) === String(clienteId))?.nome || 'Selecione um cliente'}</Text>
           </TouchableOpacity>
 
           {showClienteList && (
@@ -188,10 +216,18 @@ export default function Veiculo() {
           <TextInput value={modelo} onChangeText={setModelo} style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]} />
 
           <Text style={[styles.label, { color: colors.textMuted }]}>Placa *</Text>
-          <TextInput value={placa} onChangeText={setPlaca} style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]} />
+          <TextInput
+            value={placa}
+            onChangeText={(text) => setPlaca(formatPlaca(text))}
+            style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
+            autoCapitalize="characters"
+            maxLength={8}
+            placeholder="ABC-1234 ou QSX6C10"
+            placeholderTextColor={colors.textMuted}
+          />
 
           <Text style={[styles.label, { color: colors.textMuted }]}>Ano</Text>
-          <TextInput value={ano} onChangeText={setAno} style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]} keyboardType="numeric" />
+          <TextInput value={ano} onChangeText={(text) => setAno(formatAno(text))} style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]} keyboardType="numeric" maxLength={4} />
 
           <Text style={[styles.label, { color: colors.textMuted }]}>Cor</Text>
           <TextInput value={cor} onChangeText={setCor} style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]} />
@@ -214,6 +250,7 @@ const styles = StyleSheet.create({
   label: { marginTop: 12, marginBottom: 6, fontWeight: '600', color: '#333' },
   input: { borderWidth: 1, borderRadius: 10, padding: 10, marginBottom: 8 },
   item: { padding: 12, borderWidth: 1, borderRadius: 12, marginBottom: 10 },
+  gridItem: { flex: 0.48 },
   itemTitle: { fontWeight: 'bold', marginBottom: 4 },
   itemSmall: { marginTop: 4 },
   clienteButton: { borderWidth: 1, borderRadius: 10, padding: 12, marginBottom: 8 },
@@ -223,6 +260,7 @@ const styles = StyleSheet.create({
   clienteListItemText: { fontSize: 14, fontWeight: '500' },
   clienteListItemPhone: { fontSize: 12, marginTop: 2 },
   actionButton: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10 },
+  gridActionButton: { paddingVertical: 7, borderRadius: 10 },
   actionText: { fontSize: 12, fontWeight: '700' },
   primaryButton: { paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
   primaryButtonText: { color: '#fff', fontWeight: '700' }
