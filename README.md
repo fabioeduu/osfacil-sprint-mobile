@@ -304,11 +304,10 @@ START
 ## Link do YouTube: 
   - https://youtube.com/shorts/n2uNzI5LF8M 
 
-## video do projeto: https://youtube.com/shorts/n2uNzI5LF8M
+## Video do Projeto 01: https://youtube.com/shorts/n2uNzI5LF8M
 
-  - Video 01: [![Assista ao vídeo](https://www.youtube.com/shorts/n2uNzI5LF8M)]
+## Video do Projeto 02: https://youtube.com/shorts/yStuXNV-Cj0
 
-  - Video 02: [![Assista ao vídeo](https://youtu.be/yStuXNV-Cj0)]
 
 ## Link do APK:
   - https://expo.dev/accounts/fabioeduu/projects/osfacil/builds/7ad780f8-a419-40f8-8f99-76fa7dc85106 
