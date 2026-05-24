@@ -295,13 +295,23 @@ START
 - **Versão:** 1.0.0 (conforme `package.json`)
 
 ---
+
+# Login Teste:
+- Email: carlos@osfacil.com
+- Senha: 123
+
+---
 ## Link do YouTube: 
   - https://youtube.com/shorts/n2uNzI5LF8M 
 
 ## video do projeto: https://youtube.com/shorts/n2uNzI5LF8M
 
-[![Assista ao vídeo](https://www.youtube.com/shorts/n2uNzI5LF8M)]
+  - Video 01: [![Assista ao vídeo](https://www.youtube.com/shorts/n2uNzI5LF8M)]
 
+  - Video 02: [![Assista ao vídeo](https://youtu.be/yStuXNV-Cj0)]
+
+## Link do APK:
+  - https://expo.dev/accounts/fabioeduu/projects/osfacil/builds/7ad780f8-a419-40f8-8f99-76fa7dc85106 
 
 ## Autores do projeto:
 
